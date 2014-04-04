@@ -20,16 +20,18 @@ class MapReader:
 		self.pub_oc_init = rospy.Publisher("/map_init", OccupancyGrid)
 		self.pub_oc_static = rospy.Publisher("/map_static", OccupancyGrid)
 		self.pub_oc_dynamic = rospy.Publisher("/map_dynamic", OccupancyGrid)
+		self.pub_oc_view = rospy.Publisher("/map_view_vizualizer", OccupancyGrid)
 		
 		# Globals
 		self._oc_init = []
 		self._oc_static = []
 		self._oc_dynamic = []
+		self._oc_view = []
 		
 		# position robot
 		self._robo_pos = Pose2D
-		self._robo_pos.x = 14
-		self._robo_pos.y = 6
+		self._robo_pos.x = 13
+		self._robo_pos.y = 7
 		
 		# Parameter Simulation
 		self._update_rate_velocity = 2
@@ -73,16 +75,21 @@ class MapReader:
 					
 		oc_tpl_new = tuple(oc_lst)
 	
-		print "old origin: ", oc.info.origin
-		
+		# initizialize world map
 		self._oc_init = oc
 		self._oc_init.data = oc_tpl_new
 		self._oc_init.info.origin.position.x = 0
 		self._oc_init.info.origin.position.y = 0
 		
-		
+		# initialize view vizualizer
+		self._oc_view = copy.deepcopy(oc)
+		self._oc_view.data = tuple([0] * (self._range_view_vert*self._range_view_horz))
+		self._oc_view.info.origin.position.x = self._robo_pos.x - self._range_view_vert -1
+		self._oc_view.info.origin.position.y = self._robo_pos.y
+		self._oc_view.info.width = self._range_view_horz
+		self._oc_view.info.height = self._range_view_vert
+
 	def talker(self):
-		pub = rospy.Publisher('chatter', String)
 		rospy.init_node('talker', anonymous=True)
 		r = rospy.Rate(2) # 10hz
 		
@@ -136,6 +143,7 @@ class MapReader:
 			oc_tpl_update = tuple(oc_lst)
 			self._oc_init.data = oc_tpl_update
 			self.pub_oc_init.publish(self._oc_init)
+			self.pub_oc_view.publish(self._oc_view)
 			
 			# update measurements static and dynamic maps
 			self._oc_static = self.update_oc_static(self._oc_static)
