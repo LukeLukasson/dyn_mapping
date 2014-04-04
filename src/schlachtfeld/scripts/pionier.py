@@ -31,13 +31,13 @@ class MapReader:
 		self._update_rate_velocity = 2
 		
 		# Parameter Algorithm (static)
-		self._h_stat = 0.8
-		self._l_stat = 0.2
+		self._h_stat = 0.9
+		self._l_stat = 0.1
 		self._H_stat = self._h_stat/(1-self._h_stat)
 		self._L_stat = self._l_stat/(1-self._l_stat)
 		# Parameter Algorithm (dynamic)
-		self._h_dyn = 0.9
-		self._l_dyn = 0.1
+		self._h_dyn = 0.95
+		self._l_dyn = 0.35
 		self._H_dyn = self._h_dyn/(1-self._h_dyn)
 		self._L_dyn = self._l_dyn/(1-self._l_dyn)
 		
@@ -109,7 +109,7 @@ class MapReader:
 				oc_lst[0] = 51
 				
 			# introduce new object after certain time
-			if tm_hlp >= time_new_obs:# and tm_hlp < 4*time_new_obs:
+			if tm_hlp >= time_new_obs and tm_hlp < 4*time_new_obs:
 				rospy.logwarn("object present")
 				oc_lst[self.coord_tf(10, 9)] = 99
 				oc_lst[self.coord_tf(10,10)] = 99
@@ -171,7 +171,7 @@ class MapReader:
 		# 100		100		0		True	100		H
 		
 		# try introducing L2
-		l2 = 0.2
+		l2 = 0.52
 		L2 = l2/(1-l2)
 		
 		# get relevant old map for comparison
@@ -191,16 +191,17 @@ class MapReader:
 		# get average of differencies
 		loc_avg = [(i+j)/2 for i,j in zip(loc_old, loc_msr)]
 		loc_diff = [i-j for i,j in zip(loc_old, loc_msr)]
-		#print loc_avg
 		
 		# apply model to results
 		loc_model_avg = [self._H_stat if x > 55 else self._L_stat for x in loc_avg]
-		#print loc_model_avg
-		loc_model_diff = [L2 if x < -90 else self._L_stat for x in loc_diff]
-		#print loc_model_diff
+		print loc_avg
+		print loc_model_avg
+		print loc_diff
+		loc_model_diff = [L2 if x < -87 else self._L_stat for x in loc_diff]		# ATTENTION: is a hack (should be 90)
+		print loc_model_diff
 		
-		loc_model = [max(i,j) for i,j in zip(loc_model_avg, loc_model_diff)]
-		#print loc_model
+		loc_model = [max(i,j) for i,j in zip(loc_model_avg, loc_model_diff)]		# think about it! see notes -> makes sense
+		print loc_model
 		
 		# never fully believe your map -> confidence factor
 		conf_factor = 0.95
@@ -209,7 +210,7 @@ class MapReader:
 		
 		# finally calculate p( S^t | o^1, ... , o^t, S^(t-1) ) , and represent it as int
 		loc_fin = [max(1,math.ceil(100*i*j/(1 + i*j))) for i,j in zip(loc_model, loc_prev)]
-		#print loc_fin
+		print loc_fin
 		
 		# math.ceil instead of round -> little threshold will be discovered!!!
 
