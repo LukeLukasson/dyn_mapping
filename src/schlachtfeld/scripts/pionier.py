@@ -195,21 +195,21 @@ class MapReader:
 		
 		# apply model to results
 		loc_model_avg = [self._H_stat if x > 55 else self._L_stat for x in loc_avg]
-		print loc_model_avg
+		#print loc_model_avg
 		loc_model_diff = [L2 if x < -90 else self._L_stat for x in loc_diff]
-		print loc_model_diff
+		#print loc_model_diff
 		
 		loc_model = [max(i,j) for i,j in zip(loc_model_avg, loc_model_diff)]
-		print loc_model
+		#print loc_model
 		
 		# never fully believe your map -> confidence factor
 		conf_factor = 0.95
 		loc_prev = [conf_factor*x/(100-conf_factor*x) for x in loc_old]
-		print loc_prev
+		#print loc_prev
 		
 		# finally calculate p( S^t | o^1, ... , o^t, S^(t-1) ) , and represent it as int
 		loc_fin = [max(1,math.ceil(100*i*j/(1 + i*j))) for i,j in zip(loc_model, loc_prev)]
-		print loc_fin
+		#print loc_fin
 		
 		# math.ceil instead of round -> little threshold will be discovered!!!
 
