@@ -1,1 +1,3 @@
-# Python implementation of dynamic mapping
+# Dynamic Mapping
+
+A little script for fast evaluation of some ideas
