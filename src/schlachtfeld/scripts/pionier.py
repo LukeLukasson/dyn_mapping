@@ -22,13 +22,19 @@ class MapReader:
 		self.pub_oc_dynamic = rospy.Publisher("/map_dynamic", OccupancyGrid)
 		
 		# Globals
-		self._a = 28
 		self._oc_init = []
 		self._oc_static = []
 		self._oc_dynamic = []
 		
+		# position robot
+		self._robo_pos = Pose2D
+		self._robo_pos.x = 14
+		self._robo_pos.y = 6
+		
 		# Parameter Simulation
 		self._update_rate_velocity = 2
+		self._range_view_vert = 5
+		self._range_view_horz = 2*self._range_view_vert + 1
 		
 		# Parameter Algorithm (static)
 		self._h_stat = 0.9
@@ -57,17 +63,13 @@ class MapReader:
 		print "Width x Height: %d x %d" % (self._mmd.width, self._mmd.height) 
 		
 		oc_lst = list(oc.data)
-		# position robot
-		self._robo_pos = Pose2D
-		self._robo_pos.x = 14
-		self._robo_pos.y = 8
 		oc_lst[self.coord_tf(self._robo_pos.x, self._robo_pos.y)] = 75
 		
 		# color sensor range for robot
-		for i in range(9):
-			for j in range(4):
-				if oc_lst[self.coord_tf(self._robo_pos.x-4+i, self._robo_pos.y+1+j)] != 100:
-					oc_lst[self.coord_tf(self._robo_pos.x-4+i, self._robo_pos.y+1+j)] = 0
+		for i in range(self._range_view_horz):
+			for j in range(self._range_view_vert):
+				if oc_lst[self.coord_tf(self._robo_pos.x-self._range_view_vert+i, self._robo_pos.y+1+j)] != 100:
+					oc_lst[self.coord_tf(self._robo_pos.x-self._range_view_vert+i, self._robo_pos.y+1+j)] = 0
 					
 		oc_tpl_new = tuple(oc_lst)
 	
@@ -102,7 +104,6 @@ class MapReader:
 			oc_lst = list(self._oc_init.data)
 
 			# trigger time indicator
-			rospy.loginfo("time ticking...")
 			if oc_lst[0] == 51:
 				oc_lst[0] = 49
 			else:
@@ -177,16 +178,16 @@ class MapReader:
 		# get relevant old map for comparison
 		oc_lst = list(oc.data)
 		loc_old = []							# local occupancy grid to compare to
-		for y in range(4):
-			for x in range(9):
-				loc_old.append(oc_lst[self.coord_tf(self._robo_pos.x-4+x, self._robo_pos.y+1+y)])
+		for y in range(self._range_view_vert):
+			for x in range(self._range_view_horz):
+				loc_old.append(oc_lst[self.coord_tf(self._robo_pos.x-self._range_view_vert+x, self._robo_pos.y+1+y)])
 		
 		# get relevant msr map for comparison
 		oc_msr = list(self._oc_init.data)
 		loc_msr = []
-		for y in range(4):
-			for x in range(9):
-				loc_msr.append(oc_msr[self.coord_tf(self._robo_pos.x-4+x, self._robo_pos.y+1+y)])
+		for y in range(self._range_view_vert):
+			for x in range(self._range_view_horz):
+				loc_msr.append(oc_msr[self.coord_tf(self._robo_pos.x-self._range_view_vert+x, self._robo_pos.y+1+y)])
 				
 		# get average of differencies
 		loc_avg = [(i+j)/2 for i,j in zip(loc_old, loc_msr)]
@@ -194,33 +195,26 @@ class MapReader:
 		
 		# apply model to results
 		loc_model_avg = [self._H_stat if x > 55 else self._L_stat for x in loc_avg]
-		print loc_avg
-		print loc_model_avg
-		print loc_diff
 		loc_model_diff = [L2 if x < -87 else self._L_stat for x in loc_diff]		# ATTENTION: is a hack (should be 90)
-		print loc_model_diff
 		
 		loc_model = [max(i,j) for i,j in zip(loc_model_avg, loc_model_diff)]		# think about it! see notes -> makes sense
-		print loc_model
 		
 		# never fully believe your map -> confidence factor
 		conf_factor = 0.95
 		loc_prev = [conf_factor*x/(100-conf_factor*x) for x in loc_old]
-		#print loc_prev
 		
 		# finally calculate p( S^t | o^1, ... , o^t, S^(t-1) ) , and represent it as int
 		loc_fin = [max(1,math.ceil(100*i*j/(1 + i*j))) for i,j in zip(loc_model, loc_prev)]
-		print loc_fin
 		
 		# math.ceil instead of round -> little threshold will be discovered!!!
 
-		print "--- static oc updated"
+		rospy.loginfo("static oc updated")
 		
 		# write it back
 		i = 0
-		for y in range(4):
-			for x in range(9):
-				oc_lst[self.coord_tf(self._robo_pos.x-4+x, self._robo_pos.y+1+y)] = loc_fin[i]
+		for y in range(self._range_view_vert):
+			for x in range(self._range_view_horz):
+				oc_lst[self.coord_tf(self._robo_pos.x-self._range_view_vert+x, self._robo_pos.y+1+y)] = loc_fin[i]
 				i += 1
 						
 		loc_tpl_new = tuple(oc_lst)
@@ -241,22 +235,22 @@ class MapReader:
 		# get relevant old static and dynamic map for comparison
 		oc_lst_dyn = list(oc_dyn.data)
 		loc_old_dyn = []							# local occupancy grid to compare to
-		for y in range(4):
-			for x in range(9):
-				loc_old_dyn.append(oc_lst_dyn[self.coord_tf(self._robo_pos.x-4+x, self._robo_pos.y+1+y)])
+		for y in range(self._range_view_vert):
+			for x in range(self._range_view_horz):
+				loc_old_dyn.append(oc_lst_dyn[self.coord_tf(self._robo_pos.x-self._range_view_vert+x, self._robo_pos.y+1+y)])
 
 		oc_lst_stat = list(oc.data)
 		loc_old_stat = []							# local occupancy grid to compare to
-		for y in range(4):
-			for x in range(9):
-				loc_old_stat.append(oc_lst_stat[self.coord_tf(self._robo_pos.x-4+x, self._robo_pos.y+1+y)])
-		
+		for y in range(self._range_view_vert):
+			for x in range(self._range_view_horz):
+				loc_old_stat.append(oc_lst_stat[self.coord_tf(self._robo_pos.x-self._range_view_vert+x, self._robo_pos.y+1+y)])
+						
 		# get relevant msr map for comparison
 		oc_msr = list(self._oc_init.data)
 		loc_msr = []
-		for y in range(4):
-			for x in range(9):
-				loc_msr.append(oc_msr[self.coord_tf(self._robo_pos.x-4+x, self._robo_pos.y+1+y)])
+		for y in range(self._range_view_vert):
+			for x in range(self._range_view_horz):
+				loc_msr.append(oc_msr[self.coord_tf(self._robo_pos.x-self._range_view_vert+x, self._robo_pos.y+1+y)])
 				
 		# get average of differencies
 		loc_diff = [i-j for i,j in zip(loc_old_stat, loc_msr)]
@@ -272,18 +266,16 @@ class MapReader:
 		#print loc_prev
 		
 		# finally calculate p( D^t | o^1, ... , o^t, S^(t-1) ) , and represent it as int
-		loc_fin = [max(1,round(100*i*j/(1 + i*j))) for i,j in zip(loc_model, loc_prev)]   # <-------------- HACK
-		#print loc_fin
-		
+		loc_fin = [max(1,round(100*i*j/(1 + i*j))) for i,j in zip(loc_model, loc_prev)]   # <-------------- HACK		
 
-		print "--- dynamic oc updated"
+		rospy.loginfo("dynamic oc updated")
 		# write it back
 		i = 0
-		for y in range(4):
-			for x in range(9):
-				oc_lst_dyn[self.coord_tf(self._robo_pos.x-4+x, self._robo_pos.y+1+y)] = loc_fin[i]
+		for y in range(self._range_view_vert):
+			for x in range(self._range_view_horz):
+				oc_lst_dyn[self.coord_tf(self._robo_pos.x-self._range_view_vert+x, self._robo_pos.y+1+y)] = loc_fin[i]
 				i += 1
-						
+										
 		loc_tpl_new = tuple(oc_lst_dyn)
 		oc_dyn.data = loc_tpl_new
 		
