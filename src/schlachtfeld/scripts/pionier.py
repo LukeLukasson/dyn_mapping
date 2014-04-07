@@ -39,15 +39,16 @@ class MapReader:
 		self._range_view_horz = 2*self._range_view_vert + 1
 		
 		# Parameter Algorithm (static)
-		self._h_stat = 0.9
-		self._l_stat = 0.1
+		self._h_stat = 0.7 		# how fast shall we believe?
+		self._l_stat = 0.1		# how fast shall it vanish?
 		self._H_stat = self._h_stat/(1-self._h_stat)
 		self._L_stat = self._l_stat/(1-self._l_stat)
 		# Parameter Algorithm (dynamic)
-		self._h_dyn = 0.95
-		self._l_dyn = 0.35
+		self._h_dyn = 0.99		# how fast shall we believe?
+		self._l_dyn = 0.2		# how fast shall it vanish?
 		self._H_dyn = self._h_dyn/(1-self._h_dyn)
 		self._L_dyn = self._l_dyn/(1-self._l_dyn)
+		self._lost_threshold = 90
 		
 	def callback(self, data):
 		rospy.loginfo("Initialize Map reading")
@@ -275,6 +276,12 @@ class MapReader:
 		
 		# finally calculate p( D^t | o^1, ... , o^t, S^(t-1) ) , and represent it as int
 		loc_fin = [max(1,round(100*i*j/(1 + i*j))) for i,j in zip(loc_model, loc_prev)]   # <-------------- HACK		
+		print loc_fin
+		
+		# prevent obstacles from being lost between the maps! keep object in dynamic map until it fully belongs to the static map
+		# if in static map (> 5) and falling value in dynamic maps then keep it high! 
+		loc_fin = [95 if j-k > 0 and (i > 5 and i < 90) else k for i,j,k in zip(loc_old_stat, loc_old_dyn, loc_fin)]
+		print loc_fin
 
 		rospy.loginfo("dynamic oc updated")
 		# write it back
