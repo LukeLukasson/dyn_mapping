@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<launch>
+    
+        
+    <!-- lanch map server -->
+<!--
+    <node name="map_server" pkg="map_server" type="map_server" args="$(find scitos_2d_navigation)/maps/floorsix.yaml"/>
+-->
+
+    <!--
+    set up time nicely so there is no problem with old, outdated timestamps; rosparam set use_sim_time true
+    -->
+    <param name="/use_sim_time" value="true"/>
+    <node pkg="rosbag" type="play" name="rosbagplayer" args="/home/lukas/rosbags/kitchen_3.bag
+            /tf:=/tf_old
+            /move_base/DWAPlannerROS/parameter_descriptions:=/deadEnd2a
+            /move_base/DWAPlannerROS/parameter_updates:=/deadEnd2b
+            /move_base/global_costmap/costmap:=/deadEnd2c
+            /move_base/global_costmap/inflation_layer/parameter_descriptions:=/deadEnd2d
+            /move_base/global_costmap/inflation_layer/parameter_updates:=/deadEnd2e
+            /move_base/global_costmap/obstacle_layer/clearing_endpoints:=/deadEnd2f
+            /move_base/global_costmap/obstacle_layer/parameter_descriptions:=/deadEnd2g
+            /move_base/global_costmap/obstacle_layer/parameter_updates:=/deadEnd2h
+            /move_base/global_costmap/obstacle_layer_footprint/footprint_stamped:=/deadEnd2i
+            /move_base/global_costmap/obstacle_layer_footprint/parameter_descriptions:=/deadEnd2j
+            /move_base/global_costmap/obstacle_layer_footprint/parameter_updates:=/deadEnd2k
+            /move_base/global_costmap/parameter_descriptions:=/deadEnd2l
+            /move_base/global_costmap/parameter_updates:=/deadEnd2m
+            /move_base/global_costmap/static_layer/parameter_descriptions:=/deadEnd2n
+            /move_base/global_costmap/static_layer/parameter_updates:=/deadEnd2o
+            /move_base/local_costmap/costmap:=/deadEnd2p
+            /move_base/local_costmap/inflation_layer/parameter_descriptions:=/deadEnd2q
+            /move_base/local_costmap/inflation_layer/parameter_updates:=/deadEnd2r
+            /move_base/local_costmap/obstacle_layer/clearing_endpoints:=/deadEnd2s
+            /move_base/local_costmap/obstacle_layer/parameter_descriptions:=/deadEnd2t
+            /move_base/local_costmap/obstacle_layer/parameter_updates:=/deadEnd2u
+            /move_base/local_costmap/obstacle_layer_footprint/footprint_stamped:=/deadEnd2v
+            /move_base/local_costmap/obstacle_layer_footprint/parameter_descriptions:=/deadEnd2w
+            /move_base/local_costmap/obstacle_layer_footprint/parameter_updates:=/deadEnd2x
+            /move_base/local_costmap/parameter_descriptions:=/deadEnd2y
+            /move_base/local_costmap/parameter_updates:=/deadEnd2z
+            /move_base/parameter_descriptions:=/deadEnd2aa
+            /move_base/parameter_updates:=/deadEnd2ab
+            /move_base/status:=/deadEnd2ac
+            --clock"
+        output="screen"/>
+        
+    <!-- update tf -->
+    <node pkg="tf" type="tf_remap" name="tf_remap" output="screen"/>
+
+    <!-- launch AMCL -->
+    <include file="$(find scitos_2d_navigation)/launch/amcl.launch"/>
+
+    <!-- launch move base -->
+    <include file="$(find scitos_2d_navigation)/launch/move_base.launch"/>
+
+</launch>
