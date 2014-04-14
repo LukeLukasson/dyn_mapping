@@ -1,3 +1,4 @@
+# watch out for absolute path!
 image: /home/lukas/maps/floorsix.pgm
 resolution: 0.050000
 origin: [-100.000000, -100.000000, 0.000000]
