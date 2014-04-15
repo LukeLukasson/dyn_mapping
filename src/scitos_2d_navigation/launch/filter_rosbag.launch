@@ -50,7 +50,9 @@
     <node pkg="tf" type="tf_remap" name="tf_remap" output="screen"/>
 
     <!-- launch AMCL -->
+<!--
     <include file="$(find scitos_2d_navigation)/launch/amcl.launch"/>
+-->
 
     <!-- launch move base -->
     <include file="$(find scitos_2d_navigation)/launch/move_base.launch"/>
