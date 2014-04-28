@@ -8,47 +8,56 @@
 
 // Luke
 #include <iostream>
-#include "../Eigen/Dense"
+#include "../Eigen/Dense" // adjusted path
 #include <nav_msgs/OccupancyGrid.h>
+
 
 namespace scitos_2d_navigation
 {
-
+    
 class GridLayer : public costmap_2d::Layer, public costmap_2d::Costmap2D
 {
 public:
-  GridLayer();
+    // Constructor and Destructor 
+    //~ GridLayer();
+    ~GridLayer();
 
-  virtual void onInitialize();
-  virtual void updateBounds(double origin_x, double origin_y, double origin_yaw, double* min_x, double* min_y, double* max_x,
+    // from original grid_layer
+    virtual void onInitialize();
+    virtual void updateBounds(double origin_x, double origin_y, double origin_yaw, double* min_x, double* min_y, double* max_x,
                              double* max_y);
-  virtual void updateCosts(costmap_2d::Costmap2D& master_grid, int min_i, int min_j, int max_i, int max_j);
-  bool isDiscretized()
-  {
-    return true;
-  }
+    virtual void updateCosts(costmap_2d::Costmap2D& master_grid, int min_i, int min_j, int max_i, int max_j);
+    bool isDiscretized()
+    {
+        return true;
+    }
 
-  virtual void matchSize();
+    virtual void matchSize();
   
 private:
-  void reconfigureCB(costmap_2d::GenericPluginConfig &config, uint32_t level);
-  dynamic_reconfigure::Server<costmap_2d::GenericPluginConfig> *dsrv_;
+    void reconfigureCB(costmap_2d::GenericPluginConfig &config, uint32_t level);
+    dynamic_reconfigure::Server<costmap_2d::GenericPluginConfig> *dsrv_;
 
-  // Luke
-  void matrixToMap(Eigen::MatrixXf matrix);
+    // Luke
+    void matrixToMap(Eigen::MatrixXf matrix);
+    void initStaticMap(nav_msgs::OccupancyGrid &map);
+    // callback functions
+    void initStaticMapCallback(const nav_msgs::OccupancyGrid::ConstPtr &mainMap);
   
-  // make the matrix available
-  Eigen::MatrixXf kanon;
+    // make the matrix available
+    Eigen::MatrixXf kanon;
   
-  // static map
-  nav_msgs::OccupancyGrid::ConstPtr staticMap;
-  
-  // create publishers
-  ros::Publisher staticMapPub;
-  
-  // initialize maps by subscribing to original map 
-  //~ void initStaticMapCallback(const nav_msgs::OccupancyGrid::ConstPtr &mainMap);
-  //~ ros::Subscriber mainMapSub();
+    // static map
+    nav_msgs::OccupancyGrid staticMap;
+    
+    // ROS handles
+    ros::Publisher staticMapPub;
+    ros::Subscriber mainMapSub;
+    
+    // debug
+    ros::Publisher chatterPub;
+    
+    ros::NodeHandle nh;
 };
 }
 #endif
