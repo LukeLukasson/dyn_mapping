@@ -3,7 +3,10 @@
 
 // debug
 #include "std_msgs/String.h"
-#include <vector>
+#include <vector>               // needed for updating map
+#include <map>                  // needed for converting Eigen matrix to array
+#include <Eigen/StdVector>      // needed for converting Eigen matrix to array
+#include <sys/types.h>          // for getting int8_t
 
 PLUGINLIB_EXPORT_CLASS(scitos_2d_navigation::GridLayer, costmap_2d::Layer)
 
@@ -12,6 +15,8 @@ using costmap_2d::NO_INFORMATION;
 
 // Luke
 using Eigen::MatrixXf;
+using Eigen::MatrixXi;
+using Eigen::VectorXi;
 
 namespace scitos_2d_navigation
 {
@@ -50,11 +55,22 @@ void GridLayer::onInitialize()
     // define subscriber
     //~ mainMapSub = nh.subscribe("/map", 2, &GridLayer::initStaticMapCallback, this); 
     
-    // initialize an nxn matrix with any scalar
-    kanon = MatrixXf::Constant(2,2,100);
-    kanon(0,0) = 1.1;
+    // initialize an nxn matrix with any scalar (ColumnMajor!!!)
+    int width_meter = 100;
+    int height_meter = 50;
+    resolution = 1;
+    width = width_meter / resolution;
+    height = height_meter / resolution;
 
-    std::cout << std::endl << kanon << std::endl;
+    n_cells = width*height;
+    
+    kanon = MatrixXf::Constant(width,height,50);
+    kanon(0,0) = 1.1;
+    kanon(1,0) = 89.5;
+    kanon(1,1) = 99.9;
+    kanon(10,49) = 100;
+
+    //~ std::cout << std::endl << kanon << std::endl;
 
     matrixToMap(kanon);
     
@@ -68,11 +84,14 @@ void GridLayer::initStaticMap(nav_msgs::OccupancyGrid &map)
     ROS_WARN("initializing static map");
     
     // handeling nav_msgs/MapMetaData
-    map.info.resolution = 1.0;      // float32
-    map.info.width = 2;             // uint32
-    map.info.height = 2;            // uint32
-    int p[] = {0, 0, 0, 0};
-    std::vector<signed char> a(p, p+4);
+    map.info.resolution = resolution;       // float32
+    map.info.width = width;                 // uint32
+    map.info.height = height;               // uint32
+    map.info.origin.position.x = -width/2 * resolution;
+    map.info.origin.position.y = -height/2 * resolution;
+    map.info.origin.orientation.w = 1.0;    // the same orientation as the /map
+    int p[n_cells];
+    std::vector<signed char> a(p, p+n_cells);
     //~ for( std::vector<signed char>::const_iterator i = a.begin(); i != a.end(); ++i) {
         //~ std::cout << *i << ' ';
     //~ }
@@ -82,15 +101,67 @@ void GridLayer::initStaticMap(nav_msgs::OccupancyGrid &map)
 // push values of matrix to OccupancyGrid of map
 void GridLayer::matrixToMap(Eigen::MatrixXf matrix)
 {
-    std::cout << matrix << std::endl;
+    //~ std::cout << matrix << std::endl;
     
-    // debug
-    std_msgs::String msg;
-    std::stringstream ss;
-    ss << "hello world, msg";
-    msg.data = ss.str();
-    chatterPub.publish(msg);
+    // how many cells in map?
+    int n_elements = n_cells;
+    
+    // cast <float> matrix to <int> matrix
+    MatrixXi matrix_int = matrix.cast<int>();
+    //~ std::cout << matrix_int << std::endl;
+    
+    // transform Eigen::Matrix to Eigen::Vector
+    VectorXi vector_int = VectorXi::Map(matrix_int.data(), n_elements);
+    
+    //~ std::cout << vector_int << std::endl;
+    
+    // create vector to publish map
+    int init_v[n_elements];
+    std::vector<signed char> map_vector(init_v, init_v+n_cells);    
+    
+    // convert vector of <int> to <int8_t> (signed char)
+    for( int i=0; i<n_elements; i++ ) {
+        map_vector[i] = (int8_t)vector_int[i];
+    }
+    
+    // publish map
+    ROS_WARN("+++ Publishing Map");
+    staticMap.data = map_vector;
     staticMapPub.publish(staticMap);
+    
+    
+    
+    //~ // debug
+    //~ std_msgs::String msg;
+    //~ std::stringstream ss;
+    //~ ss << "hello world, msg";
+    //~ msg.data = ss.str();
+    //~ chatterPub.publish(msg);
+    //~ 
+    //~ int a[n_elements];   
+    //~ int *p = &a[0];    
+    //~ Eigen::Map<Eigen::Matrix<int,2,2,Eigen::RowMajor> >(p,2,2) = matrix_int;
+    //~ 
+    //~ for (int i=0; i<n_elements; i++)
+        //~ std::cout << p[i] << " ";
+    //~ std::cout << std::endl;
+
+
+    // transform Eigen::Vector to std::vector
+    //~ std::vector<Eigen::VectorXi, Eigen::aligned_allocator<Eigen::VectorXi> > v = vector_int;
+    
+    //~ v = vector_int.data();
+        
+    //~ std::cout << v << std::endl;
+
+    //~ std::map<MatrixXi>(v.data(), 2, 2) = matrix_int;
+
+    //~ std::vector<int> v_int;
+    //~ std::vector<float> v_float(v_int.begin(), v_int.end());
+    
+    //~ for( std::vector<signed char>::const_iterator i = v.begin(); i != v.end(); ++i) {
+        //~ std::cout << *i << ' ';
+    //~ }
 }
 
 // init static map by waiting for the original map

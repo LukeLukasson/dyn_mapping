@@ -58,6 +58,12 @@ private:
     ros::Publisher chatterPub;
     
     ros::NodeHandle nh;
+    
+    // grid data
+    int height;
+    int width;
+    double resolution;
+    int n_cells;
 };
 }
 #endif
