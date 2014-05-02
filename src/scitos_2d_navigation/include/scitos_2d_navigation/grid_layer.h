@@ -39,8 +39,10 @@ private:
     dynamic_reconfigure::Server<costmap_2d::GenericPluginConfig> *dsrv_;
 
     // Luke
-    void matrixToMap(Eigen::MatrixXf matrix);
+    void writeMatrixToMap(Eigen::MatrixXf matrix);
     void initStaticMap(nav_msgs::OccupancyGrid &map);
+    // transformers
+    void transformMapToMatrix(int world_x, int world_y, int &map_x, int &map_y);
     // callback functions
     void initStaticMapCallback(const nav_msgs::OccupancyGrid::ConstPtr &mainMap);
   
@@ -64,6 +66,8 @@ private:
     int width;
     double resolution;
     int n_cells;
+    
+
 };
 }
 #endif
