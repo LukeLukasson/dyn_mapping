@@ -11,6 +11,7 @@
 PLUGINLIB_EXPORT_CLASS(scitos_2d_navigation::GridLayer, costmap_2d::Layer)
 
 using costmap_2d::LETHAL_OBSTACLE;
+using costmap_2d::FREE_SPACE;
 using costmap_2d::NO_INFORMATION;
 
 // Luke
@@ -28,6 +29,7 @@ using Eigen::VectorXi;
  * ====
  * 
  * x Parameters by reference in functions? Why better? -> see schlachtfeld
+ * x initStaticMap does not need an argument!!!
  */
  
  
@@ -64,6 +66,7 @@ void GridLayer::onInitialize()
     // Luke
     // define publisher
     staticMapPub = nh.advertise<nav_msgs::OccupancyGrid>("/static_map", 10);
+    dynamicMapPub = nh.advertise<nav_msgs::OccupancyGrid>("/dynamic_map", 10);
     chatterPub = nh.advertise<std_msgs::String>("/chatter", 1000);
     // define subscriber
     //~ mainMapSub = nh.subscribe("/map", 2, &GridLayer::initStaticMapCallback, this); 
@@ -77,71 +80,88 @@ void GridLayer::onInitialize()
 
     n_cells = width*height;
     
-    kanon = MatrixXf::Constant(width,height,50);
-    kanon(0,0) = 1.1;
-    kanon(1,0) = 89.5;
-    kanon(1,1) = 99.9;
-    kanon(10,49) = 100;
+    staticMap_matrix = MatrixXf::Constant(width,height,0.5);
 
-    //~ std::cout << std::endl << kanon << std::endl;
+    //~ std::cout << std::endl << staticMap_matrix << std::endl;
 
-    writeMatrixToMap(kanon);
+    publishMaps();
     
-    initStaticMap(staticMap);
+    //initStaticMap(staticMap);
+    
+    // flags
+    flag_before_init = false;
     
 }
 
 // initialize static map
-void GridLayer::initStaticMap(nav_msgs::OccupancyGrid &map)
+void GridLayer::initStaticMap()
 {
-    ROS_WARN("initializing static map");
+    ROS_WARN("+++ Initializing static map");
     
     // handeling nav_msgs/MapMetaData
-    map.info.resolution = resolution;       // float32
-    map.info.width = width;                 // uint32
-    map.info.height = height;               // uint32
-    map.info.origin.position.x = -width/2 * resolution;
-    map.info.origin.position.y = -height/2 * resolution;
-    map.info.origin.orientation.w = 1.0;    // the same orientation as the /map
+    staticMap.info.resolution = resolution;                         // float32
+    staticMap.info.width = width;                                   // uint32
+    staticMap.info.height = height;                                 // uint32
+    staticMap.info.origin.position.x = -width/2 * resolution;       // same origin as /map
+    staticMap.info.origin.position.y = -height/2 * resolution;      // same origin as /map
+    staticMap.info.origin.orientation.w = 1.0;                      // same orientation as /map
     int p[n_cells];
     std::vector<signed char> a(p, p+n_cells);
-    //~ for( std::vector<signed char>::const_iterator i = a.begin(); i != a.end(); ++i) {
-        //~ std::cout << *i << ' ';
-    //~ }
-    map.data = a;
+    staticMap.data = a;
+}
+
+// initialize dynamic map
+void GridLayer::initDynamicMap()
+{
+    ROS_WARN("+++ Initializing dynamic map");
+    
+    // handeling nav_msgs/MapMetaData
+    dynamicMap.info.resolution = resolution;                         // float32
+    dynamicMap.info.width = width;                                   // uint32
+    dynamicMap.info.height = height;                                 // uint32
+    dynamicMap.info.origin.position.x = -width/2 * resolution;       // same origin as /map
+    dynamicMap.info.origin.position.y = -height/2 * resolution;      // same origin as /map
+    dynamicMap.info.origin.orientation.w = 1.0;                      // same orientation as /map
+    int p[n_cells];
+    std::vector<signed char> a(p, p+n_cells);
+    dynamicMap.data = a;
+    
+    // itialize matrix with 0.5 probability (unknown)
+    dynamicMap_matrix = MatrixXf::Constant(width,height,0.5);
+
 }
 
 // push values of matrix to OccupancyGrid of map
-void GridLayer::writeMatrixToMap(Eigen::MatrixXf matrix)
+void GridLayer::publishMaps()
 {
-    //~ std::cout << matrix << std::endl;
-    
-    // how many cells in map?
-    int n_elements = n_cells;
-    
+    // how many cells in map? -> n_cells
     // cast <float> matrix to <int> matrix
-    MatrixXi matrix_int = matrix.cast<int>();
+    MatrixXi matrix_int_stat = staticMap_matrix.cast<int>();
+    MatrixXi matrix_int_dyn = dynamicMap_matrix.cast<int>();
     //~ std::cout << matrix_int << std::endl;
     
     // transform Eigen::Matrix to Eigen::Vector
-    VectorXi vector_int = VectorXi::Map(matrix_int.data(), n_elements);
-    
-    //~ std::cout << vector_int << std::endl;
-    
+    VectorXi vector_int_stat = VectorXi::Map(matrix_int_stat.data(), n_cells);
+    VectorXi vector_int_dyn = VectorXi::Map(matrix_int_dyn.data(), n_cells);
+        
     // create vector to publish map
-    int init_v[n_elements];
-    std::vector<signed char> map_vector(init_v, init_v+n_cells);    
+    int init_v_stat[n_cells];
+    std::vector<signed char> map_vector_stat(init_v_stat, init_v_stat+n_cells);
+    int init_v_dyn[n_cells];
+    std::vector<signed char> map_vector_dyn(init_v_dyn, init_v_dyn+n_cells);    
     
     // convert vector of <int> to <int8_t> (signed char)
-    for( int i=0; i<n_elements; i++ ) {
-        map_vector[i] = (int8_t)vector_int[i];
+    for( int i=0; i<n_cells; i++ ) {
+        map_vector_stat[i] = 100*(int8_t)vector_int_stat[i];
+        map_vector_dyn[i] = 100*(int8_t)vector_int_dyn[i];
     }
     
     // publish map
-    ROS_INFO("+++ Publishing Map");
-    staticMap.data = map_vector;
+    ROS_WARN("+++ Publishing maps!");
+    staticMap.data = map_vector_stat;
     staticMapPub.publish(staticMap);
-    
+    dynamicMap.data = map_vector_dyn;
+    dynamicMapPub.publish(dynamicMap);
     
     
     //~ // debug
@@ -151,11 +171,11 @@ void GridLayer::writeMatrixToMap(Eigen::MatrixXf matrix)
     //~ msg.data = ss.str();
     //~ chatterPub.publish(msg);
     //~ 
-    //~ int a[n_elements];   
+    //~ int a[n_cells];   
     //~ int *p = &a[0];    
     //~ Eigen::Map<Eigen::Matrix<int,2,2,Eigen::RowMajor> >(p,2,2) = matrix_int;
     //~ 
-    //~ for (int i=0; i<n_elements; i++)
+    //~ for (int i=0; i<n_cells; i++)
         //~ std::cout << p[i] << " ";
     //~ std::cout << std::endl;
 
@@ -239,7 +259,7 @@ void GridLayer::updateBounds(double origin_x, double origin_y, double origin_yaw
         //~ int matrix_y;
         //~ transformMapToMatrix(mx, my, matrix_x, matrix_y);
         //~ std::cout << "mat_x: " << matrix_x << " -- mat_y: " << matrix_y << std::endl;
-        //~ kanon(matrix_x, matrix_y) = 100;
+        //~ staticMap_matrix(matrix_x, matrix_y) = 100;
 
     }
     
@@ -278,7 +298,7 @@ void GridLayer::updateBounds(double origin_x, double origin_y, double origin_yaw
     ROS_INFO("-------------------------");
     ROS_INFO("-------------------------");
     
-    writeMatrixToMap(kanon);
+    //~ publishMaps();
 
 
 }
@@ -303,10 +323,10 @@ void GridLayer::updateCosts(costmap_2d::Costmap2D& master_grid, int min_i, int m
     //~ ROS_INFO("-------------------------");
     //~ ROS_INFO("-------------------------"); 
 
-    min_i = std::max(min_i, 4000/2 - width/2);
-    min_j = std::max(min_j, 4000/2 - height/2);
-    max_i = std::min(max_i, 4000/2 + width/2);
-    max_j = std::min(max_j, 4000/2 + height/2);
+    //~ min_i = std::max(min_i, 4000/2 - width/2);
+    //~ min_j = std::max(min_j, 4000/2 - height/2);
+    //~ max_i = std::min(max_i, 4000/2 + width/2);
+    //~ max_j = std::min(max_j, 4000/2 + height/2);
 
     ROS_INFO("-------------------------");
     ROS_INFO("------------updateCosts--");
@@ -347,9 +367,9 @@ void GridLayer::updateCosts(costmap_2d::Costmap2D& master_grid, int min_i, int m
 
     int matrix_x, matrix_y;
     int counter = 0;
-    for (int j = min_j; j < max_j; j++)
+    for (int j = min_j+1; j < max_j-1; j++)
     {
-        for (int i = min_i; i < max_i; i++)
+        for (int i = min_i+1; i < max_i-1; i++)
         {
             counter++;
             int index = layered_costmap->getIndex(i, j); // old: getIndex(i, j);
@@ -362,11 +382,61 @@ void GridLayer::updateCosts(costmap_2d::Costmap2D& master_grid, int min_i, int m
             master_grid.setCost(i, j, (int)master_array[index]); // costmap_[index]
             transformMapToMatrix(i, j, matrix_x, matrix_y);
             //~ std::cout << "mat_x: " << matrix_x << " -- mat_y: " << matrix_y << std::endl;
-            kanon(matrix_x, matrix_y) = std::max((int)kanon(matrix_x, matrix_y), (int)master_array[index]);
+            //~ staticMap_matrix(matrix_x, matrix_y) = std::max((int)staticMap_matrix(matrix_x, matrix_y), (int)master_array[index]);
             //~ ROS_INFO("i: %i  j: %i", i, j);
         }
     }
-    std::cout << "Counter: " << counter << std::endl;
+    
+    if(flag_before_init) {
+        // mark end points
+        transformMapToMatrix(max_i, min_j, matrix_x, matrix_y);
+        staticMap_matrix(matrix_x, matrix_y) = 150;
+        transformMapToMatrix(min_i, max_j, matrix_x, matrix_y);
+        staticMap_matrix(matrix_x, matrix_y) = 150;
+        transformMapToMatrix(max_i, max_j, matrix_x, matrix_y);
+        staticMap_matrix(matrix_x, matrix_y) = 150;
+        transformMapToMatrix(min_i, min_j, matrix_x, matrix_y);
+        staticMap_matrix(matrix_x, matrix_y) = 150;
+        //~ transformMapToMatrix(min_i+1, min_j, matrix_x, matrix_y);
+        //~ staticMap_matrix(matrix_x, matrix_y) = -1;
+        //~ transformMapToMatrix(min_i+2, min_j, matrix_x, matrix_y);
+        //~ staticMap_matrix(matrix_x, matrix_y) = 50;
+        //~ transformMapToMatrix(min_i+3, min_j, matrix_x, matrix_y);
+        //~ staticMap_matrix(matrix_x, matrix_y) = 100;
+    } else {
+        // initialize staticMap with the values of the static_layer
+        initStaticMap(); // create the map so it's available
+        for(int i=max_i/2-width/2; i<max_i/2+width/2; i++) {
+            for(int j=max_j/2-height/2; j<max_i/2+height/2; j++) {
+                int index = layered_costmap->getIndex(i, j);
+                transformMapToMatrix(i, j, matrix_x, matrix_y);
+                if((int)master_array[index] == NO_INFORMATION) {
+                    staticMap_matrix(matrix_x, matrix_y) = 0.5;
+                    continue;
+                } else if((int)master_array[index] == FREE_SPACE) {
+                    staticMap_matrix(matrix_x, matrix_y) = 0.5; // hack! problem listed in notes...
+                    continue;
+                } else if((int)master_array[index] == LETHAL_OBSTACLE) {
+                    staticMap_matrix(matrix_x, matrix_y) = 1;
+                    continue;
+                } else {
+                    ROS_WARN("Not a known value...");
+                }
+            }
+        }
+        
+        // initialize dynamicMap
+        initDynamicMap();
+        // only do that once
+        flag_before_init = true;
+    }
+    
+
+    
+    layered_costmap->setCost(3, 3, 254); // does not do anything... ???
+    std::cout << "Counter: " << counter << " NO_INFO means: " << (int)NO_INFORMATION << std::endl;
+    
+    publishMaps();
 
 }
 
