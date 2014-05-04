@@ -89,7 +89,7 @@ void GridLayer::onInitialize()
     //initStaticMap(staticMap);
     
     // flags
-    flag_before_init = false;
+    flag_init = false;
     
 }
 
@@ -157,7 +157,7 @@ void GridLayer::publishMaps()
     }
     
     // publish map
-    ROS_WARN("+++ Publishing maps!");
+    ROS_WARN("+++ Publishing maps");
     staticMap.data = map_vector_stat;
     staticMapPub.publish(staticMap);
     dynamicMap.data = map_vector_dyn;
@@ -303,6 +303,20 @@ void GridLayer::updateBounds(double origin_x, double origin_y, double origin_yaw
 
 }
 
+void GridLayer::updateStaticMap()
+{
+    ROS_WARN("+++ Updating static map");
+    /* 6 cases:
+     * S_t-1		o_t		Diff	Equal	Avg		L/H
+     * 0			0		0		True	0		L
+	 * 50		    0		50		False	25		L
+	 * 100		    0 		100		False	50		L
+	 * 0			100		-100	False	50		L2 -> Problem for changing elements in environments
+	 * 50		    100		-50		False	75		H
+	 * 100		    100		0		True	100		H
+     */
+}
+
 void GridLayer::updateCosts(costmap_2d::Costmap2D& master_grid, int min_i, int min_j, int max_i,
                                           int max_j)
 {
@@ -310,6 +324,8 @@ void GridLayer::updateCosts(costmap_2d::Costmap2D& master_grid, int min_i, int m
     if (!enabled_)
     return;
 
+    // initialize input data matrix (only in scope to protect from misbehaving...)
+    MatrixXf inputData_matrix = MatrixXf::Constant(width,height,0.5);
 
 //~ 
     //~ ROS_INFO("-------------------------");
@@ -323,10 +339,13 @@ void GridLayer::updateCosts(costmap_2d::Costmap2D& master_grid, int min_i, int m
     //~ ROS_INFO("-------------------------");
     //~ ROS_INFO("-------------------------"); 
 
-    //~ min_i = std::max(min_i, 4000/2 - width/2);
-    //~ min_j = std::max(min_j, 4000/2 - height/2);
-    //~ max_i = std::min(max_i, 4000/2 + width/2);
-    //~ max_j = std::min(max_j, 4000/2 + height/2);
+    // why???
+    if(!flag_init) {
+        min_i = std::max(min_i, 4000/2 - width/2);
+        min_j = std::max(min_j, 4000/2 - height/2);
+        max_i = std::min(max_i, 4000/2 + width/2);
+        max_j = std::min(max_j, 4000/2 + height/2);
+    }
 
     ROS_INFO("-------------------------");
     ROS_INFO("------------updateCosts--");
@@ -361,15 +380,14 @@ void GridLayer::updateCosts(costmap_2d::Costmap2D& master_grid, int min_i, int m
     }
     std::cout << counter_ma << std::endl;
     
-    ROS_WARN_STREAM("getCharMap(): " << master_grid.getCharMap() << " master_array: " << master_array << " master_array[0]: " << element);
-
+    //~ ROS_WARN_STREAM("getCharMap(): " << master_grid.getCharMap() << " master_array: " << master_array << " master_array[0]: " << element);
 
 
     int matrix_x, matrix_y;
     int counter = 0;
-    for (int j = min_j+1; j < max_j-1; j++)
+    for (int j = min_j; j < max_j; j++)
     {
-        for (int i = min_i+1; i < max_i-1; i++)
+        for (int i = min_i; i < max_i; i++)
         {
             counter++;
             int index = layered_costmap->getIndex(i, j); // old: getIndex(i, j);
@@ -381,13 +399,18 @@ void GridLayer::updateCosts(costmap_2d::Costmap2D& master_grid, int min_i, int m
             }
             master_grid.setCost(i, j, (int)master_array[index]); // costmap_[index]
             transformMapToMatrix(i, j, matrix_x, matrix_y);
-            //~ std::cout << "mat_x: " << matrix_x << " -- mat_y: " << matrix_y << std::endl;
-            //~ staticMap_matrix(matrix_x, matrix_y) = std::max((int)staticMap_matrix(matrix_x, matrix_y), (int)master_array[index]);
+            if(flag_init) {
+                //~ std::cout << "(i,j): (" << i << "," << j << ") -> gives: mat_x: " << matrix_x << " -- mat_y: " << matrix_y << std::endl;
+                inputData_matrix(matrix_x,matrix_y) = (int)master_array[index];
+            }
             //~ ROS_INFO("i: %i  j: %i", i, j);
         }
     }
     
-    if(flag_before_init) {
+    
+    
+    
+    if(flag_init) {
         // mark end points
         transformMapToMatrix(max_i, min_j, matrix_x, matrix_y);
         staticMap_matrix(matrix_x, matrix_y) = 150;
@@ -397,17 +420,21 @@ void GridLayer::updateCosts(costmap_2d::Costmap2D& master_grid, int min_i, int m
         staticMap_matrix(matrix_x, matrix_y) = 150;
         transformMapToMatrix(min_i, min_j, matrix_x, matrix_y);
         staticMap_matrix(matrix_x, matrix_y) = 150;
-        //~ transformMapToMatrix(min_i+1, min_j, matrix_x, matrix_y);
-        //~ staticMap_matrix(matrix_x, matrix_y) = -1;
-        //~ transformMapToMatrix(min_i+2, min_j, matrix_x, matrix_y);
-        //~ staticMap_matrix(matrix_x, matrix_y) = 50;
-        //~ transformMapToMatrix(min_i+3, min_j, matrix_x, matrix_y);
-        //~ staticMap_matrix(matrix_x, matrix_y) = 100;
+
+        // update static and dynamic maps
+        updateStaticMap();
+        // publish Maps
+        dynamicMap_matrix = inputData_matrix;
+        publishMaps();
+            
     } else {
         // initialize staticMap with the values of the static_layer
         initStaticMap(); // create the map so it's available
-        for(int i=max_i/2-width/2; i<max_i/2+width/2; i++) {
-            for(int j=max_j/2-height/2; j<max_i/2+height/2; j++) {
+        ROS_WARN("Still OK");
+        //~ for(int i=max_i/2-width/2; i<max_i/2+width/2; i++) {
+            //~ for(int j=max_j/2-height/2; j<max_j/2+height/2; j++) {
+        for(int i=min_i; i<max_i; i++) {
+            for(int j=min_j; j<max_j; j++) {
                 int index = layered_costmap->getIndex(i, j);
                 transformMapToMatrix(i, j, matrix_x, matrix_y);
                 if((int)master_array[index] == NO_INFORMATION) {
@@ -428,16 +455,13 @@ void GridLayer::updateCosts(costmap_2d::Costmap2D& master_grid, int min_i, int m
         // initialize dynamicMap
         initDynamicMap();
         // only do that once
-        flag_before_init = true;
+        flag_init = true;
     }
     
 
     
     layered_costmap->setCost(3, 3, 254); // does not do anything... ???
     std::cout << "Counter: " << counter << " NO_INFO means: " << (int)NO_INFORMATION << std::endl;
-    
-    publishMaps();
-
 }
 
 } // end namespace

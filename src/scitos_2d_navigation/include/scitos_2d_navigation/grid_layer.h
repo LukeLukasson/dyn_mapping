@@ -39,32 +39,32 @@ private:
     dynamic_reconfigure::Server<costmap_2d::GenericPluginConfig> *dsrv_;
 
     // Luke
+    // worker functions
     void publishMaps();
     void initStaticMap();
     void initDynamicMap();
-    // transformers
     void transformMapToMatrix(int world_x, int world_y, int &map_x, int &map_y);
-    // callback functions
+    void updateStaticMap();
+    // callback functions (needed anymore???)
     void initStaticMapCallback(const nav_msgs::OccupancyGrid::ConstPtr &mainMap);
   
     // make the matrix available
     Eigen::MatrixXf staticMap_matrix;
     Eigen::MatrixXf dynamicMap_matrix;
   
-    // static map
+    // maps
     nav_msgs::OccupancyGrid staticMap;
     nav_msgs::OccupancyGrid dynamicMap;
     
     // ROS handles
+    ros::NodeHandle nh;
     ros::Publisher staticMapPub;
     ros::Publisher dynamicMapPub;
     ros::Subscriber mainMapSub;
     
     // debug
     ros::Publisher chatterPub;
-    
-    ros::NodeHandle nh;
-    
+
     // grid data
     int height;
     int width;
@@ -72,8 +72,9 @@ private:
     int n_cells;
     
     // flags
-    bool flag_before_init;
+    bool flag_init;
 
+    // parameters algorithm
 };
 }
 #endif
