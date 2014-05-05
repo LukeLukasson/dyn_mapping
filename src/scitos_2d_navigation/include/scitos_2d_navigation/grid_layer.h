@@ -44,7 +44,9 @@ private:
     void initStaticMap();
     void initDynamicMap();
     void transformMapToMatrix(int world_x, int world_y, int &map_x, int &map_y);
-    void updateStaticMap();
+    void updateStaticMap(Eigen::MatrixXf &meas_mat, const int min_x, const int min_y, const int max_x, const int max_y);
+    //~ void updateDynamicMap(Eigen::MatrixXf &meas_mat, const int min_x, const int min_y, const int max_x, const int max_y);
+
     // callback functions (needed anymore???)
     void initStaticMapCallback(const nav_msgs::OccupancyGrid::ConstPtr &mainMap);
   
@@ -75,6 +77,16 @@ private:
     bool flag_init;
 
     // parameters algorithm
+    float lower_bound;
+    float upper_bound;
+    
+    double stat_High;
+    double stat_Low;
+    double dyn_High;
+    double dyn_Low;
+    
+    float conf_factor;      // never fully believe your past map
+
 };
 }
 #endif
