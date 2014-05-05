@@ -92,13 +92,15 @@ void GridLayer::onInitialize()
     flag_init = false;
     
     // parameters algorithm
-    lower_bound = 0.1;
-    upper_bound = 0.9;
+    lower_bound = 0.1;							// free space below 0.1 prob
+    upper_bound = 0.9;							// occupied space over 0.9 prob
     
     float stat_low = 0.49;						// how fast shall it vanish?
     stat_Low = stat_low/(1-stat_low);
     float stat_high = 0.9;       	            // how fast shall we believe?
     stat_High = stat_high/(1-stat_high);
+    float stat_low2 = 0.52;						// introduce static dynamic obstacle into static map
+    stat_Low2 = stat_low2/(1-stat_low2);
     
     conf_factor = 0.95;
     
@@ -372,12 +374,17 @@ void GridLayer::updateStaticMap(Eigen::MatrixXf &meas_mat, const int min_x, cons
             
             // calcluate average (for stat) to decide whether its L or H
             avg = (meas_mat(i,j) + staticMap_matrix(i,j)) / 2;
+            // calcluate diff (for dyn) to decide whether its L or H
+            diff = staticMap_matrix(i,j) - meas_mat(i,j);
             
             // apply static model
             if(avg > (lower_bound+1)/2) {
                 model = stat_High;
             } else {
                 model = stat_Low;
+                if(diff < -upper_bound) {		// second criteria for becoming L2
+					model = stat_Low2;
+				}
             }
             
             // never fully believe old static measurements
@@ -385,9 +392,6 @@ void GridLayer::updateStaticMap(Eigen::MatrixXf &meas_mat, const int min_x, cons
                         
             // finally calculate p( S^t | o^1, ... , o^t, S^(t-1) )
             staticMap_matrix(i,j) = std::max(map_min_value, (model*old_map) / (1 + model*old_map));
-
-            // calcluate average (for stat) to decide whether its L or H
-            diff = staticMap_matrix(i,j) - meas_mat(i,j);
             
             // apply dynamic model
             if(diff < -upper_bound) {
