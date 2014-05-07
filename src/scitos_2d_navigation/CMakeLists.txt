@@ -56,7 +56,7 @@ add_definitions(${PCL_DEFINITIONS})
 ## DEPENDS: system dependencies of this project that dependent projects also need
 catkin_package(
     INCLUDE_DIRS include
-    LIBRARIES simple_layers grid_layer
+    LIBRARIES simple_layers dynamic_layer
     CATKIN_DEPENDS costmap_2d dynamic_reconfigure roscpp
     DEPENDS system_lib
 )
@@ -77,7 +77,7 @@ include_directories(
 #add_library(noise_voxel_grid src/noise_voxel_grid.cpp)
 add_library(noise_approximate_voxel_grid src/noise_approximate_voxel_grid.cpp)
 add_library(simple_layer plugins/simple_layers.cpp)
-add_library(grid_layer plugins/grid_layer.cpp)
+add_library(dynamic_layer plugins/dynamic_layer.cpp)
 
 ## Declare a cpp executable
 add_executable(subsample_cloud src/subsample_cloud.cpp)
@@ -87,11 +87,11 @@ add_executable(remove_edges_cloud src/remove_edges_cloud.cpp)
 ## as an example, message headers may need to be generated before nodes
 # add_dependencies(scitos_2d_navigation_node scitos_2d_navigation_generate_messages_cpp)
 add_dependencies(simple_layer plugins/simple_layers.cpp)
-add_dependencies(grid_layer plugins/grid_layer.cpp)
+add_dependencies(dynamic_layer plugins/dynamic_layer.cpp)
 
 target_link_libraries(noise_approximate_voxel_grid
     simple_layer
-    grid_layer
+    dynamic_layer
     ${PCL_LIBRARIES}
 )
 

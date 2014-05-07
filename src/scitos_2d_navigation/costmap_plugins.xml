@@ -4,9 +4,9 @@
             <description>Demo Layer that adds a point 1 meter in front of the robot</description>
         </class>
     </library>
-    <library path="lib/libgrid_layer">
-        <class type="scitos_2d_navigation::GridLayer" base_class_type="costmap_2d::Layer">
-            <description>Demo Layer that marks all points that were ever one meter in front of the robot</description>
+    <library path="lib/libdynamic_layer">
+        <class type="scitos_2d_navigation::DynamicLayer" base_class_type="costmap_2d::Layer">
+            <description>Publishing a static_map and a dynamic_map based on current measurments.</description>
         </class>
     </library>    
 </class_libraries>
