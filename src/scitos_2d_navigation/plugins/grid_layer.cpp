@@ -24,6 +24,7 @@ using Eigen::VectorXi;
  * 
  * o Handle resolution and size of /map generically
  * o Clean up code
+ * o Check SUPER HACK things
  * 
  * Done
  * ====
@@ -95,14 +96,14 @@ void GridLayer::onInitialize()
     lower_bound = 0.1;							// free space below 0.1 prob
     upper_bound = 0.9;							// occupied space over 0.9 prob
     
-    float stat_low = 0.49;						// how fast shall it vanish?
+    float stat_low = 0.4;						// how fast shall it vanish?
     stat_Low = stat_low/(1-stat_low);
     float stat_high = 0.9;       	            // how fast shall we believe?
     stat_High = stat_high/(1-stat_high);
     float stat_low2 = 0.52;						// introduce static dynamic obstacle into static map
     stat_Low2 = stat_low2/(1-stat_low2);
     
-    conf_factor = 0.95;
+    conf_factor = 0.99;
     
     float dyn_low = 0.2;						// how fast shall it vanish?
     dyn_Low = dyn_low/(1-dyn_low);
@@ -391,7 +392,14 @@ void GridLayer::updateStaticMap(Eigen::MatrixXf &meas_mat, const int min_x, cons
             old_map = (staticMap_matrix(i,j)*conf_factor) / (1 - staticMap_matrix(i,j)*conf_factor);
                         
             // finally calculate p( S^t | o^1, ... , o^t, S^(t-1) )
-            staticMap_matrix(i,j) = std::max(map_min_value, (model*old_map) / (1 + model*old_map));
+            if(meas_mat(i,j) == 0.5) {
+				staticMap_matrix(i,j) = 0.5;		// SUPER HACK!!! CHECK IF THAT IS A GOOD IDEA!!!
+			} else {
+				staticMap_matrix(i,j) = std::max(map_min_value, (model*old_map) / (1 + model*old_map));
+            }
+            
+            // calcluate diff (for dyn) to decide whether its L or H (freshly... check that if necessary!) SUPER HACK
+            diff = staticMap_matrix(i,j) - meas_mat(i,j);
             
             // apply dynamic model
             if(diff < -upper_bound) {

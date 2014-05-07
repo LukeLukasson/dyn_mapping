@@ -82,6 +82,7 @@ private:
     
     double stat_High;
     double stat_Low;
+    double stat_Low2;
     double dyn_High;
     double dyn_Low;
     
