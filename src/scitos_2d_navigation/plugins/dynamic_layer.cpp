@@ -45,6 +45,7 @@ DynamicLayer::~DynamicLayer()
 
 void DynamicLayer::onInitialize()
 {
+	ros::NodeHandle nh("~/" + name_);
     current_ = true;
     default_value_ = NO_INFORMATION;
     matchSize();
@@ -57,42 +58,64 @@ void DynamicLayer::onInitialize()
     // Luke
     // define publisher
     staticMapPub = nh.advertise<nav_msgs::OccupancyGrid>("/static_map", 10);
+    staticMapXxlPub = nh.advertise<nav_msgs::OccupancyGrid>("/static_map_xxl", 10);
     dynamicMapPub = nh.advertise<nav_msgs::OccupancyGrid>("/dynamic_map", 10);
-    chatterPub = nh.advertise<std_msgs::String>("/chatter", 1000);
+    dynamicMapXxlPub = nh.advertise<nav_msgs::OccupancyGrid>("/dynamic_map_xxl", 10);
     
     // initialize an nxn matrix with any scalar (ColumnMajor!!!)
     int width_meter = 60;
     int height_meter = 30;
     resolution = 0.05;
+    resolution_xxl = 0.2;
     width = width_meter / resolution;
     height = height_meter / resolution;
+    width_xxl = width_meter / resolution_xxl;
+    height_xxl = height_meter / resolution_xxl;
 
     n_cells = width*height;
+    n_cells_xxl = width_xxl*height_xxl;
     
-    staticMap_matrix = MatrixXf::Constant(width,height,0.5);
+    if(debug)
+    ROS_WARN_STREAM("width_xxl: " << width_xxl << " height_xxl: " << height_xxl << " width_xxl*height_xxl: " << width_xxl*height_xxl);
+    
+	mod_number = resolution_xxl/resolution;			// good idea to introduce an exception handler here
 
-    //~ publishMaps();
+    // initialize matrices
+    staticMap_matrix = MatrixXf::Constant(width,height,0.5);
+    staticMap_xxl_matrix = MatrixXf::Constant(width_xxl,height_xxl,0.5);
+    dynamicMap_matrix = MatrixXf::Constant(width,height,0.5);
+    dynamicMap_xxl_matrix = MatrixXf::Constant(width_xxl,height_xxl,0.5);
+    
+    // assign seq numbers
+    staticMap_seq = 1;
+    staticMap_xxl_seq = 2;
+    dynamicMap_seq = 3;
+    dynamicMap_xxl_seq = 4;
+    
+	initStaticMapXxl();
+	initDynamicMapXxl();
     
     // flags
     flag_init = false;
-    debug = false;
+    nh.param("debug_flag", debug, false);
     
     // parameters algorithm
     lower_bound = 0.1;							// free space below 0.1 prob
     upper_bound = 0.9;							// occupied space over 0.9 prob
     
-    float stat_low = 0.4;						// how fast shall it vanish?
+    double stat_low, stat_high, stat_low2, dyn_low, dyn_high;
+    nh.param("stat_low", stat_low, 0.4);		// how fast shall it vanish?
     stat_Low = stat_low/(1-stat_low);
-    float stat_high = 0.9;       	            // how fast shall we believe?
+    nh.param("stat_high", stat_high, 0.9);		// how fast shall we believe?
     stat_High = stat_high/(1-stat_high);
-    float stat_low2 = 0.52;						// introduce static dynamic obstacle into static map
+    nh.param("stat_low2", stat_low2, 0.52);		// introduce static dynamic obstacle into static map
     stat_Low2 = stat_low2/(1-stat_low2);
     
-    conf_factor = 0.99;
+    nh.param("conf_factor", conf_factor, 1.0);
     
-    float dyn_low = 0.2;						// how fast shall it vanish?
+    nh.param("dyn_low", dyn_low, 0.2);			// how fast shall it vanish?
     dyn_Low = dyn_low/(1-dyn_low);
-    float dyn_high = 0.99;       	            // how fast shall we believe?
+    nh.param("dyn_high", dyn_high, 0.99);		// how fast shall we believe?
     dyn_High = dyn_high/(1-dyn_high);
     
     if(debug)
@@ -116,6 +139,30 @@ void DynamicLayer::initStaticMap()
     int p[n_cells];
     std::vector<signed char> a(p, p+n_cells);
     staticMap.data = a;
+    
+    // get initializer
+    staticMap.header.seq = staticMap_seq;
+}
+
+// initialize static map xxl
+void DynamicLayer::initStaticMapXxl()
+{
+	if(debug)
+	ROS_WARN("+++ Initializing static map xxl");
+    
+    // handeling nav_msgs/MapMetaData
+    staticMap_xxl.info.resolution = resolution_xxl;                     // float32
+    staticMap_xxl.info.width = width_xxl;                               // uint32
+    staticMap_xxl.info.height = height_xxl;                             // uint32
+    staticMap_xxl.info.origin.position.x = -width/2 * resolution;       // same origin as /map
+    staticMap_xxl.info.origin.position.y = -height/2 * resolution;      // same origin as /map
+    staticMap_xxl.info.origin.orientation.w = 1.0;                      // same orientation as /map
+    int p[n_cells];
+    std::vector<signed char> a(p, p+n_cells);
+    staticMap_xxl.data = a;
+    
+    // get initializer
+    staticMap_xxl.header.seq = staticMap_xxl_seq;
 }
 
 // initialize dynamic map
@@ -135,47 +182,67 @@ void DynamicLayer::initDynamicMap()
     std::vector<signed char> a(p, p+n_cells);
     dynamicMap.data = a;
     
-    // itialize matrix with 0.5 probability (unknown)
-    dynamicMap_matrix = MatrixXf::Constant(width,height,0.5);
+    // get initializer
+    dynamicMap.header.seq = dynamicMap_seq;
+}
 
+// initialize dynamic map xxl
+void DynamicLayer::initDynamicMapXxl()
+{
+	if(debug)
+	ROS_WARN("+++ Initializing dynamic map xxl");
+    
+    // handeling nav_msgs/MapMetaData
+    dynamicMap_xxl.info.resolution = resolution_xxl;                     // float32
+    dynamicMap_xxl.info.width = width_xxl;                               // uint32
+    dynamicMap_xxl.info.height = height_xxl;                             // uint32
+    dynamicMap_xxl.info.origin.position.x = -width/2 * resolution;       // same origin as /map
+    dynamicMap_xxl.info.origin.position.y = -height/2 * resolution;      // same origin as /map
+    dynamicMap_xxl.info.origin.orientation.w = 1.0;                      // same orientation as /map
+    int p[n_cells];
+    std::vector<signed char> a(p, p+n_cells);
+    dynamicMap_xxl.data = a;
+    
+    // get initializer
+    dynamicMap_xxl.header.seq = dynamicMap_xxl_seq;
 }
 
 // push values of matrix to OccupancyGrid of map
-void DynamicLayer::publishMaps()
+void DynamicLayer::publishMap(nav_msgs::OccupancyGrid map, Eigen::MatrixXf matrix, int cells)
 {
     // how many cells in map? -> n_cells
     // cast <float> matrix to <int> matrix
-    MatrixXf staticMap_copy = 100*staticMap_matrix;
-    MatrixXf dynamicMap_copy = 100*dynamicMap_matrix;
-    MatrixXi matrix_int_stat = staticMap_copy.cast<int>();
-    MatrixXi matrix_int_dyn = dynamicMap_copy.cast<int>();
-    
+    MatrixXf matrix_copy = 100*matrix;
+    MatrixXi matrix_int = matrix_copy.cast<int>();
+
     // transform Eigen::Matrix to Eigen::Vector
-    VectorXi vector_int_stat = VectorXi::Map(matrix_int_stat.data(), n_cells);
-    VectorXi vector_int_dyn = VectorXi::Map(matrix_int_dyn.data(), n_cells);
+    VectorXi vector_int = VectorXi::Map(matrix_int.data(), cells);
         
     // create vector to publish map
-    int init_v_stat[n_cells];
-    std::vector<signed char> map_vector_stat(init_v_stat, init_v_stat+n_cells);
-    int init_v_dyn[n_cells];
-    std::vector<signed char> map_vector_dyn(init_v_dyn, init_v_dyn+n_cells);    
+    int init_v[cells];
+    std::vector<signed char> map_vector(init_v, init_v+cells);
     
     // convert vector of <int> to <int8_t> (signed char)
-    for(int i=0; i<n_cells; i++) {
-        map_vector_stat[i] = (int8_t)vector_int_stat[i];
-        if(map_vector_stat[i] > (int8_t)100*upper_bound) {
-            map_vector_stat[i] = (int8_t)100;
-        }
-        map_vector_dyn[i] = (int8_t)vector_int_dyn[i];
+    for(int i=0; i<cells; i++) {
+        map_vector[i] = (int8_t)vector_int[i];
     }
     
     // publish map
-    staticMap.data = map_vector_stat;
-    staticMapPub.publish(staticMap);
-    dynamicMap.data = map_vector_dyn;
-    dynamicMapPub.publish(dynamicMap);
+    map.data = map_vector;
+    
+    // check identifier and publish accordingly
+    if(map.header.seq == staticMap_seq) {
+		staticMapPub.publish(map);
+	} else if(map.header.seq == staticMap_xxl_seq) {
+		staticMapXxlPub.publish(map);
+	} else if(map.header.seq == dynamicMap_seq) {
+		dynamicMapPub.publish(map);
+	} else if(map.header.seq == dynamicMap_xxl_seq) {
+		dynamicMapXxlPub.publish(map);
+	}
+	
     if(debug)
-    ROS_WARN("+++ Publishing maps");    
+    ROS_WARN("+++ Publishing map");    
     
 }
 
@@ -281,6 +348,9 @@ void DynamicLayer::updateMaps(Eigen::MatrixXf &meas_mat, const int min_x, const 
     // screws up algorithm if value goes to 0
     float map_min_value = 0.01;
     
+    // buffer for filling up xxl map
+    int i_xxl, j_xxl;
+    
     for(int i=min_x; i<max_x; i++) {
         for(int j=min_y; j<max_y; j++) {
             // map input data to probabilistic representation
@@ -333,6 +403,30 @@ void DynamicLayer::updateMaps(Eigen::MatrixXf &meas_mat, const int min_x, const 
             
             if(debug) {
             //~ std::cout << "|" << meas_mat(i,j) << ">" << old_dynamicMap_matrix_value << ">" << diff << ">" << model << ">" << old_map << ">" << dynamicMap_matrix(i,j) << " ";
+			}
+			
+			// buffer algorithm
+			if(i%mod_number == 0 && j%mod_number == 0) {			// last element
+				if(debug)
+				ROS_WARN_STREAM("(i_xxl, j_xxl) = (" << i_xxl << ", " << j_xxl << ")");
+				
+				// find the max of the lower resolution grid
+				float max_value_stat = 0;
+				float max_value_dyn = 0;
+				for(int i_tmp=0; i_tmp<mod_number; i_tmp++) {
+					for(int j_tmp=0; j_tmp<mod_number; j_tmp++) {
+						if (max_value_stat < staticMap_matrix(i-i_tmp,j-j_tmp)) {
+							max_value_stat = staticMap_matrix(i-i_tmp,j-j_tmp);
+						}
+						if (max_value_dyn < dynamicMap_matrix(i-i_tmp,j-j_tmp)) {
+							max_value_dyn = dynamicMap_matrix(i-i_tmp,j-j_tmp);
+						}
+					}
+				}
+
+				i_xxl = i/mod_number; j_xxl = j/mod_number;
+				staticMap_xxl_matrix(i_xxl,j_xxl) = max_value_stat;
+				dynamicMap_xxl_matrix(i_xxl,j_xxl) = max_value_dyn;
 			}
         }
     }
@@ -421,8 +515,18 @@ void DynamicLayer::updateCosts(costmap_2d::Costmap2D& master_grid, int min_i, in
         transformMapToMatrix(max_i, max_j, max_x, max_y);
         updateMaps(inputData_matrix, min_x, min_y, max_x, max_y);
         
+        // update static and dynamic xxl maps
+        int min_x_xxl, min_y_xxl, max_x_xxl, max_y_xxl;
+        min_x_xxl = min_x/4;
+        min_y_xxl = min_y/4;
+        max_x_xxl = max_x/4;
+        max_y_xxl = max_y/4;
+        
         // publish Maps
-        publishMaps();
+        publishMap(staticMap, staticMap_matrix, n_cells);
+        publishMap(dynamicMap, dynamicMap_matrix, n_cells);
+        publishMap(staticMap_xxl, staticMap_xxl_matrix, n_cells_xxl);
+        publishMap(dynamicMap_xxl, dynamicMap_xxl_matrix, n_cells_xxl);
             
     } else {
         // initialize staticMap with the values of the static_layer

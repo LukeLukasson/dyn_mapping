@@ -39,34 +39,49 @@ private:
 
     // Luke
     // worker functions
-    void publishMaps();
+    void publishMap(nav_msgs::OccupancyGrid map, Eigen::MatrixXf matrix, int cells);
     void initStaticMap();
+    void initStaticMapXxl();
     void initDynamicMap();
+    void initDynamicMapXxl();
     void transformMapToMatrix(int world_x, int world_y, int &map_x, int &map_y);
     void updateMaps(Eigen::MatrixXf &meas_mat, const int min_x, const int min_y, const int max_x, const int max_y);
 
     // make the matrix available
     Eigen::MatrixXf staticMap_matrix;
-    Eigen::MatrixXf dynamicMap_matrix;
-  
+	Eigen::MatrixXf staticMap_xxl_matrix;
+	Eigen::MatrixXf dynamicMap_matrix;
+	Eigen::MatrixXf dynamicMap_xxl_matrix;
+	
     // maps
     nav_msgs::OccupancyGrid staticMap;
+    nav_msgs::OccupancyGrid staticMap_xxl;
     nav_msgs::OccupancyGrid dynamicMap;
+    nav_msgs::OccupancyGrid dynamicMap_xxl;
+    
+    // identifier
+    int staticMap_seq;
+    int staticMap_xxl_seq;
+    int dynamicMap_seq;
+    int dynamicMap_xxl_seq;
     
     // ROS handles
     ros::NodeHandle nh;
     ros::Publisher staticMapPub;
+    ros::Publisher staticMapXxlPub;
     ros::Publisher dynamicMapPub;
-    ros::Subscriber mainMapSub;
-    
-    // debug
-    ros::Publisher chatterPub;
+    ros::Publisher dynamicMapXxlPub;
 
     // grid data
     int height;
     int width;
+    int height_xxl;
+    int width_xxl;
     double resolution;
+    double resolution_xxl;
     int n_cells;
+    int n_cells_xxl;
+    int mod_number;
     
     // flags
     bool flag_init;
@@ -82,7 +97,7 @@ private:
     double dyn_High;
     double dyn_Low;
     
-    float conf_factor;      // never fully believe your past map
+    double conf_factor;      // never fully believe your past map
 
 };
 }
