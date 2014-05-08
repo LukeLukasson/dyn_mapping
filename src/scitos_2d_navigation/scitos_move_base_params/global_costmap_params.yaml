@@ -1,0 +1,14 @@
+global_costmap:
+  update_frequency: 5.0
+  #5.0
+  publish_frequency: 2.0
+  #2.0
+  static_map: true
+  rolling_window: false
+  plugins:  
+    - {name: static_layer, type: "costmap_2d::StaticLayer"}
+    - {name: obstacle_layer, type: "costmap_2d::VoxelLayer"}
+    #~ - {name: obstacle_layer, type: "costmap_2d::VoxelLayer"}
+    #~ - {name: simple_layer, type: "scitos_2d_navigation::SimpleLayer"}
+    #~ - {name: inflation_layer, type: "costmap_2d::InflationLayer"}
+    - {name: dynamic_layer, type: "scitos_2d_navigation::DynamicLayer"}

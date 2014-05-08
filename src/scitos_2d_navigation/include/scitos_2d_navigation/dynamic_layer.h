@@ -39,13 +39,13 @@ private:
 
     // Luke
     // worker functions
-    void publishMap(nav_msgs::OccupancyGrid map, Eigen::MatrixXf matrix, int cells);
+    void publishMap(nav_msgs::OccupancyGrid &map, Eigen::MatrixXf &matrix, int cells);
     void initStaticMap();
     void initStaticMapXxl();
     void initDynamicMap();
     void initDynamicMapXxl();
     void transformMapToMatrix(int world_x, int world_y, int &map_x, int &map_y);
-    void updateMaps(Eigen::MatrixXf &meas_mat, const int min_x, const int min_y, const int max_x, const int max_y);
+    void updateMaps(Eigen::MatrixXf &meas_mat, const int min_x, const int min_y, const int max_x, const int max_y, const bool xxl);
 
     // make the matrix available
     Eigen::MatrixXf staticMap_matrix;
@@ -86,6 +86,7 @@ private:
     // flags
     bool flag_init;
     bool debug;
+    bool init_blank;
 
     // parameters algorithm
     float lower_bound;
