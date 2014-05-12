@@ -112,8 +112,6 @@ void DynamicLayer::onInitialize()
     nh.param("stat_low2", stat_low2, 0.52);		// introduce static dynamic obstacle into static map
     stat_Low2 = stat_low2/(1-stat_low2);
     
-    nh.param("conf_factor", conf_factor, 1.0);
-    
     nh.param("dyn_low", dyn_low, 0.2);			// how fast shall it vanish?
     dyn_Low = dyn_low/(1-dyn_low);
     nh.param("dyn_high", dyn_high, 0.99);		// how fast shall we believe?
@@ -324,7 +322,11 @@ void DynamicLayer::updateMaps(Eigen::MatrixXf &meas_mat, const int min_x, const 
 	 * 0			100		-100	False	50		L2  -> Problem for changing elements in environments
 	 * 50		    100		-50		False	75		H
 	 * 100		    100		0		True	100		H
-     * 
+	 * 
+     * 0			50		-50		False	25		enforce 0.5		(otherwise would be L)
+	 * 50		    50		0		True	50		enforce 0.5		(otherwise would be H)
+	 * 100		    50 		50		False	75		enforce 0.5		(otherwise would be H)
+	 *  
      * 6 cases dynamic update:
      * S_t-1		o_t		Diff	Equal	Avg		L/H
      * ================================================
@@ -334,6 +336,10 @@ void DynamicLayer::updateMaps(Eigen::MatrixXf &meas_mat, const int min_x, const 
      * 0			100		-100	False	50		H
      * 50		    100		-50		False	75		L
      * 100		    100		0		True	100		L
+	 * 
+     * 0			50		-50		False	25		L
+	 * 50		    50		0		True	50		L
+	 * 100		    50 		50		False	75		L
      */
     
     if(debug) {
@@ -354,8 +360,9 @@ void DynamicLayer::updateMaps(Eigen::MatrixXf &meas_mat, const int min_x, const 
     float diff = 0;
     float model = 0;
     float old_map = 0;
-    // screws up algorithm if value goes to 0
-    float map_min_value = 0.01;
+    // screws up algorithm if value goes to 0.0 or 1.0
+    float map_min_value = 0.001;
+    float map_max_value = 0.999;
     
     float stat_map_value;
     float stat_map_value_upd;
@@ -379,23 +386,23 @@ void DynamicLayer::updateMaps(Eigen::MatrixXf &meas_mat, const int min_x, const 
 				stat_map_value = staticMap_matrix(i,j);
 			}
             
-            // calcluate average (for stat) to decide whether its L or H
-            avg = (meas_mat(i,j) + stat_map_value) / 2;
+            //~ // calcluate average (for stat) to decide whether its L or H
+            //~ avg = (meas_mat(i,j) + stat_map_value) / 2;
             // calcluate diff (for dyn) to decide whether its L or H
             diff = stat_map_value - meas_mat(i,j);
             
             // apply static model
-            if(avg > (lower_bound+1)/2) {
-                model = stat_High;
-            } else {
+            if(diff > 0) {
                 model = stat_Low;
-                if(diff < -upper_bound) {		// second criteria for becoming L2
+            } else {
+                model = stat_High;
+                if(diff < -0.5) {		// second criteria for becoming L2
 					model = stat_Low2;
 				}
             }
             
             // never fully believe old static measurements
-            old_map = (stat_map_value*conf_factor) / (1 - stat_map_value*conf_factor);
+            old_map = (stat_map_value) / (1 - stat_map_value);
                         
             // finally calculate p( S^t | o^1, ... , o^t, S^(t-1) )
             if(meas_mat(i,j) == 0.5) {
@@ -406,10 +413,10 @@ void DynamicLayer::updateMaps(Eigen::MatrixXf &meas_mat, const int min_x, const 
 				}
 			} else {
 				if(xxl) {
-					staticMap_xxl_matrix(i,j) = std::max(map_min_value, (model*old_map) / (1 + model*old_map));
+					staticMap_xxl_matrix(i,j) = std::min(map_max_value, std::max(map_min_value, (model*old_map) / (1 + model*old_map)));
 					stat_map_value_upd = staticMap_xxl_matrix(i,j);
 				} else {
-					staticMap_matrix(i,j) = std::max(map_min_value, (model*old_map) / (1 + model*old_map));
+					staticMap_matrix(i,j) = std::min(map_max_value, std::max(map_min_value, (model*old_map) / (1 + model*old_map)));
 					stat_map_value_upd = staticMap_matrix(i,j);
 				}
             }
@@ -426,18 +433,18 @@ void DynamicLayer::updateMaps(Eigen::MatrixXf &meas_mat, const int min_x, const 
             
             if(xxl) {
 				// never fully believe old dynamic measurements
-				old_map = (dynamicMap_xxl_matrix(i,j)*conf_factor) / (1 - dynamicMap_xxl_matrix(i,j)*conf_factor);
+				old_map = (dynamicMap_xxl_matrix(i,j)) / (1 - dynamicMap_xxl_matrix(i,j));
 				
 				// finally calculate p( D^t | o^1, ... , o^t, S^(t-1) )
-				dynamicMap_xxl_matrix(i,j) = std::max(map_min_value, (model*old_map) / (1 + model*old_map));
+				dynamicMap_xxl_matrix(i,j) = std::min(map_max_value, std::max(map_min_value, (model*old_map) / (1 + model*old_map)));
 				//~ if(debug)
 					//~ ROS_INFO("Finished updating xxl maps");
 			} else {
 				// never fully believe old dynamic measurements
-				old_map = (dynamicMap_matrix(i,j)*conf_factor) / (1 - dynamicMap_matrix(i,j)*conf_factor);
+				old_map = (dynamicMap_matrix(i,j)) / (1 - dynamicMap_matrix(i,j));
 				
 				// finally calculate p( D^t | o^1, ... , o^t, S^(t-1) )
-				dynamicMap_matrix(i,j) = std::max(map_min_value, (model*old_map) / (1 + model*old_map));
+				dynamicMap_matrix(i,j) = std::min(map_max_value, std::max(map_min_value, (model*old_map) / (1 + model*old_map)));
 			}
             
             if(debug) {
