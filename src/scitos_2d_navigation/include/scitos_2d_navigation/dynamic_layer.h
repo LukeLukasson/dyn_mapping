@@ -49,10 +49,10 @@ private:
 
     // make the matrix available
     Eigen::MatrixXf staticMap_matrix;
-	Eigen::MatrixXf staticMap_xxl_matrix;
-	Eigen::MatrixXf dynamicMap_matrix;
-	Eigen::MatrixXf dynamicMap_xxl_matrix;
-	
+    Eigen::MatrixXf staticMap_xxl_matrix;
+    Eigen::MatrixXf dynamicMap_matrix;
+    Eigen::MatrixXf dynamicMap_xxl_matrix;
+    
     // maps
     nav_msgs::OccupancyGrid staticMap;
     nav_msgs::OccupancyGrid staticMap_xxl;

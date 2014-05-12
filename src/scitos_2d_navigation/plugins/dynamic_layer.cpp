@@ -45,7 +45,7 @@ DynamicLayer::~DynamicLayer()
 
 void DynamicLayer::onInitialize()
 {
-	ros::NodeHandle nh("~/" + name_);
+    ros::NodeHandle nh("~/" + name_);
     current_ = true;
     default_value_ = NO_INFORMATION;
     matchSize();
@@ -78,7 +78,7 @@ void DynamicLayer::onInitialize()
     if(debug)
     ROS_WARN_STREAM("width_xxl: " << width_xxl << " height_xxl: " << height_xxl << " width_xxl*height_xxl: " << width_xxl*height_xxl);
     
-	mod_number = resolution_xxl/resolution;			// good idea to introduce an exception handler here
+    mod_number = resolution_xxl/resolution;            // good idea to introduce an exception handler here
 
     // initialize matrices
     staticMap_matrix = MatrixXf::Constant(width,height,0.5);
@@ -92,8 +92,8 @@ void DynamicLayer::onInitialize()
     dynamicMap_seq = 3;
     dynamicMap_xxl_seq = 4;
     
-	initStaticMapXxl();
-	initDynamicMapXxl();
+    initStaticMapXxl();
+    initDynamicMapXxl();
     
     // flags
     flag_init = false;
@@ -101,20 +101,20 @@ void DynamicLayer::onInitialize()
     nh.param("init_static_map_blank", init_blank, false);
     
     // parameters algorithm
-    lower_bound = 0.1;							// free space below 0.1 prob
-    upper_bound = 0.9;							// occupied space over 0.9 prob
+    lower_bound = 0.1;                            // free space below 0.1 prob
+    upper_bound = 0.9;                            // occupied space over 0.9 prob
     
     double stat_low, stat_high, stat_low2, dyn_low, dyn_high;
-    nh.param("stat_low", stat_low, 0.4);		// how fast shall it vanish?
+    nh.param("stat_low", stat_low, 0.4);        // how fast shall it vanish?
     stat_Low = stat_low/(1-stat_low);
-    nh.param("stat_high", stat_high, 0.9);		// how fast shall we believe?
+    nh.param("stat_high", stat_high, 0.9);        // how fast shall we believe?
     stat_High = stat_high/(1-stat_high);
-    nh.param("stat_low2", stat_low2, 0.52);		// introduce static dynamic obstacle into static map
+    nh.param("stat_low2", stat_low2, 0.52);        // introduce static dynamic obstacle into static map
     stat_Low2 = stat_low2/(1-stat_low2);
     
-    nh.param("dyn_low", dyn_low, 0.2);			// how fast shall it vanish?
+    nh.param("dyn_low", dyn_low, 0.2);            // how fast shall it vanish?
     dyn_Low = dyn_low/(1-dyn_low);
-    nh.param("dyn_high", dyn_high, 0.99);		// how fast shall we believe?
+    nh.param("dyn_high", dyn_high, 0.99);        // how fast shall we believe?
     dyn_High = dyn_high/(1-dyn_high);
     
     if(debug)
@@ -124,8 +124,8 @@ void DynamicLayer::onInitialize()
 
 // initialize static map
 void DynamicLayer::initStaticMap()
-{	
-	if(debug)
+{    
+    if(debug)
     ROS_WARN("+++ Initializing static map");
     
     // handeling nav_msgs/MapMetaData
@@ -146,8 +146,8 @@ void DynamicLayer::initStaticMap()
 // initialize static map xxl
 void DynamicLayer::initStaticMapXxl()
 {
-	if(debug)
-	ROS_WARN("+++ Initializing static map xxl");
+    if(debug)
+    ROS_WARN("+++ Initializing static map xxl");
     
     // handeling nav_msgs/MapMetaData
     staticMap_xxl.info.resolution = resolution_xxl;                     // float32
@@ -167,7 +167,7 @@ void DynamicLayer::initStaticMapXxl()
 // initialize dynamic map
 void DynamicLayer::initDynamicMap()
 {
-	if(debug)
+    if(debug)
     ROS_WARN("+++ Initializing dynamic map");
     
     // handeling nav_msgs/MapMetaData
@@ -188,8 +188,8 @@ void DynamicLayer::initDynamicMap()
 // initialize dynamic map xxl
 void DynamicLayer::initDynamicMapXxl()
 {
-	if(debug)
-	ROS_WARN("+++ Initializing dynamic map xxl");
+    if(debug)
+    ROS_WARN("+++ Initializing dynamic map xxl");
     
     // handeling nav_msgs/MapMetaData
     dynamicMap_xxl.info.resolution = resolution_xxl;                     // float32
@@ -231,15 +231,15 @@ void DynamicLayer::publishMap(nav_msgs::OccupancyGrid &map, Eigen::MatrixXf &mat
     
     // check identifier and publish accordingly
     if(map.header.seq == staticMap_seq) {
-		staticMapPub.publish(map);
-	} else if(map.header.seq == staticMap_xxl_seq) {
-		staticMapXxlPub.publish(map);
-	} else if(map.header.seq == dynamicMap_seq) {
-		dynamicMapPub.publish(map);
-	} else if(map.header.seq == dynamicMap_xxl_seq) {
-		dynamicMapXxlPub.publish(map);
-	}
-	
+        staticMapPub.publish(map);
+    } else if(map.header.seq == staticMap_xxl_seq) {
+        staticMapXxlPub.publish(map);
+    } else if(map.header.seq == dynamicMap_seq) {
+        dynamicMapPub.publish(map);
+    } else if(map.header.seq == dynamicMap_xxl_seq) {
+        dynamicMapXxlPub.publish(map);
+    }
+    
     if(debug)
     ROS_WARN("+++ Publishing map");    
     
@@ -287,74 +287,74 @@ void DynamicLayer::updateBounds(double origin_x, double origin_y, double origin_
     if (!enabled_)
     return;
 
-	if(debug) {
-		ROS_INFO("-------------------------");
-		ROS_INFO("-----------updateBounds--");
-		ROS_INFO("origin_x:   %f", origin_x);
-		ROS_INFO("origin_y:   %f", origin_y);
-		ROS_INFO("origin_yaw: %f", origin_yaw);
-		ROS_INFO("-------------------------");
-	}
+    if(debug) {
+        ROS_INFO("-------------------------");
+        ROS_INFO("-----------updateBounds--");
+        ROS_INFO("origin_x:   %f", origin_x);
+        ROS_INFO("origin_y:   %f", origin_y);
+        ROS_INFO("origin_yaw: %f", origin_yaw);
+        ROS_INFO("-------------------------");
+    }
 
     if(debug) {
-		ROS_INFO("-------------------------");
-		ROS_INFO("-------------------------");
-		ROS_INFO("*min_x:     %f", *min_x);
-		ROS_INFO("*min_y:     %f", *min_y); 
-		ROS_INFO("*max_x:     %f", *max_x);
-		ROS_INFO("*max_y:     %f", *max_y);
-		ROS_INFO("-------------------------");
-		ROS_INFO("-------------------------");
-		ROS_INFO("-------------------------");
-		ROS_INFO("-------------------------");
-	}
+        ROS_INFO("-------------------------");
+        ROS_INFO("-------------------------");
+        ROS_INFO("*min_x:     %f", *min_x);
+        ROS_INFO("*min_y:     %f", *min_y); 
+        ROS_INFO("*max_x:     %f", *max_x);
+        ROS_INFO("*max_y:     %f", *max_y);
+        ROS_INFO("-------------------------");
+        ROS_INFO("-------------------------");
+        ROS_INFO("-------------------------");
+        ROS_INFO("-------------------------");
+    }
 }
 
 void DynamicLayer::updateMaps(Eigen::MatrixXf &meas_mat, const int min_x, const int min_y, const int max_x, const int max_y, const bool xxl)
 {
     /* 6 cases static update:
      * 
-     * S_t-1		o_t		Diff	Equal	Avg		L/H
+     * S_t-1        o_t        Diff    Equal    Avg        L/H
      * ================================================
-     * 0			0		0		True	0		L
-	 * 50		    0		50		False	25		L
-	 * 100		    0 		100		False	50		L
-	 * 0			100		-100	False	50		L2  -> Problem for changing elements in environments
-	 * 50		    100		-50		False	75		H
-	 * 100		    100		0		True	100		H
-	 * 
-     * 0			50		-50		False	25		enforce 0.5		(otherwise would be L)
-	 * 50		    50		0		True	50		enforce 0.5		(otherwise would be H)
-	 * 100		    50 		50		False	75		enforce 0.5		(otherwise would be H)
-	 *  
+     * 0            0        0        True    0        L
+     * 50            0        50        False    25        L
+     * 100            0         100        False    50        L
+     * 0            100        -100    False    50        L2  -> Problem for changing elements in environments
+     * 50            100        -50        False    75        H
+     * 100            100        0        True    100        H
+     * 
+     * 0            50        -50        False    25        enforce 0.5        (otherwise would be L)
+     * 50            50        0        True    50        enforce 0.5        (otherwise would be H)
+     * 100            50         50        False    75        enforce 0.5        (otherwise would be H)
+     *  
      * 6 cases dynamic update:
-     * S_t-1		o_t		Diff	Equal	Avg		L/H
+     * S_t-1        o_t        Diff    Equal    Avg        L/H
      * ================================================
-     * 0			0		0		True	0		L
-     * 50		    0		50		False	25		L
-     * 100		    0 		100		False	50		L
-     * 0			100		-100	False	50		H
-     * 50		    100		-50		False	75		L
-     * 100		    100		0		True	100		L
-	 * 
-     * 0			50		-50		False	25		L
-	 * 50		    50		0		True	50		L
-	 * 100		    50 		50		False	75		L
+     * 0            0        0        True    0        L
+     * 50            0        50        False    25        L
+     * 100            0         100        False    50        L
+     * 0            100        -100    False    50        H
+     * 50            100        -50        False    75        L
+     * 100            100        0        True    100        L
+     * 
+     * 0            50        -50        False    25        L
+     * 50            50        0        True    50        L
+     * 100            50         50        False    75        L
      */
     
     if(debug) {
-		ROS_WARN("+++ Updating static map");
-		ROS_WARN_STREAM("(min_x, min_y): (" << min_x << ", " << min_y << ") -- (max_x, max_y): (" << max_x << ", " << max_y << ")");
-	}
-	
-	if(xxl) {
-		if(debug)
-		ROS_INFO("Updating XXL maps...");
-	} else {
-		if(debug)
-		ROS_INFO("Updating maps...");
-	}
-	
+        ROS_WARN("+++ Updating static map");
+        ROS_WARN_STREAM("(min_x, min_y): (" << min_x << ", " << min_y << ") -- (max_x, max_y): (" << max_x << ", " << max_y << ")");
+    }
+    
+    if(xxl) {
+        if(debug)
+        ROS_INFO("Updating XXL maps...");
+    } else {
+        if(debug)
+        ROS_INFO("Updating maps...");
+    }
+    
     // local variables
     float avg = 0;
     float diff = 0;
@@ -381,10 +381,10 @@ void DynamicLayer::updateMaps(Eigen::MatrixXf &meas_mat, const int min_x, const 
             
             // handle different input
             if(xxl) {
-				stat_map_value = staticMap_xxl_matrix(i,j);
-			} else {
-				stat_map_value = staticMap_matrix(i,j);
-			}
+                stat_map_value = staticMap_xxl_matrix(i,j);
+            } else {
+                stat_map_value = staticMap_matrix(i,j);
+            }
             
             //~ // calcluate average (for stat) to decide whether its L or H
             //~ avg = (meas_mat(i,j) + stat_map_value) / 2;
@@ -396,9 +396,9 @@ void DynamicLayer::updateMaps(Eigen::MatrixXf &meas_mat, const int min_x, const 
                 model = stat_Low;
             } else {
                 model = stat_High;
-                if(diff < -0.5) {		// second criteria for becoming L2
-					model = stat_Low2;
-				}
+                if(diff < -0.5) {        // second criteria for becoming L2
+                    model = stat_Low2;
+                }
             }
             
             // never fully believe old static measurements
@@ -406,19 +406,19 @@ void DynamicLayer::updateMaps(Eigen::MatrixXf &meas_mat, const int min_x, const 
                         
             // finally calculate p( S^t | o^1, ... , o^t, S^(t-1) )
             if(meas_mat(i,j) == 0.5) {
-				if(xxl) {
-					staticMap_xxl_matrix(i,j) = 0.5;
-				} else {
-					staticMap_matrix(i,j) = 0.5;		// SUPER HACK!!! CHECK IF THAT IS A GOOD IDEA!!!
-				}
-			} else {
-				if(xxl) {
-					staticMap_xxl_matrix(i,j) = std::min(map_max_value, std::max(map_min_value, (model*old_map) / (1 + model*old_map)));
-					stat_map_value_upd = staticMap_xxl_matrix(i,j);
-				} else {
-					staticMap_matrix(i,j) = std::min(map_max_value, std::max(map_min_value, (model*old_map) / (1 + model*old_map)));
-					stat_map_value_upd = staticMap_matrix(i,j);
-				}
+                if(xxl) {
+                    staticMap_xxl_matrix(i,j) = 0.5;
+                } else {
+                    staticMap_matrix(i,j) = 0.5;        // SUPER HACK!!! CHECK IF THAT IS A GOOD IDEA!!!
+                }
+            } else {
+                if(xxl) {
+                    staticMap_xxl_matrix(i,j) = std::min(map_max_value, std::max(map_min_value, (model*old_map) / (1 + model*old_map)));
+                    stat_map_value_upd = staticMap_xxl_matrix(i,j);
+                } else {
+                    staticMap_matrix(i,j) = std::min(map_max_value, std::max(map_min_value, (model*old_map) / (1 + model*old_map)));
+                    stat_map_value_upd = staticMap_matrix(i,j);
+                }
             }
             
             // calcluate diff (for dyn) to decide whether its L or H (freshly... check that if necessary!) SUPER HACK
@@ -432,26 +432,26 @@ void DynamicLayer::updateMaps(Eigen::MatrixXf &meas_mat, const int min_x, const 
             }
             
             if(xxl) {
-				// never fully believe old dynamic measurements
-				old_map = (dynamicMap_xxl_matrix(i,j)) / (1 - dynamicMap_xxl_matrix(i,j));
-				
-				// finally calculate p( D^t | o^1, ... , o^t, S^(t-1) )
-				dynamicMap_xxl_matrix(i,j) = std::min(map_max_value, std::max(map_min_value, (model*old_map) / (1 + model*old_map)));
-				//~ if(debug)
-					//~ ROS_INFO("Finished updating xxl maps");
-			} else {
-				// never fully believe old dynamic measurements
-				old_map = (dynamicMap_matrix(i,j)) / (1 - dynamicMap_matrix(i,j));
-				
-				// finally calculate p( D^t | o^1, ... , o^t, S^(t-1) )
-				dynamicMap_matrix(i,j) = std::min(map_max_value, std::max(map_min_value, (model*old_map) / (1 + model*old_map)));
-			}
+                // never fully believe old dynamic measurements
+                old_map = (dynamicMap_xxl_matrix(i,j)) / (1 - dynamicMap_xxl_matrix(i,j));
+                
+                // finally calculate p( D^t | o^1, ... , o^t, S^(t-1) )
+                dynamicMap_xxl_matrix(i,j) = std::min(map_max_value, std::max(map_min_value, (model*old_map) / (1 + model*old_map)));
+                //~ if(debug)
+                    //~ ROS_INFO("Finished updating xxl maps");
+            } else {
+                // never fully believe old dynamic measurements
+                old_map = (dynamicMap_matrix(i,j)) / (1 - dynamicMap_matrix(i,j));
+                
+                // finally calculate p( D^t | o^1, ... , o^t, S^(t-1) )
+                dynamicMap_matrix(i,j) = std::min(map_max_value, std::max(map_min_value, (model*old_map) / (1 + model*old_map)));
+            }
             
             if(debug) {
             //~ std::cout << "|" << meas_mat(i,j) << ">" << old_dynamicMap_matrix_value << ">" << diff << ">" << model << ">" << old_map << ">" << dynamicMap_matrix(i,j) << " ";
-			}
-			
-		}
+            }
+            
+        }
     }
 }
 
@@ -474,18 +474,18 @@ void DynamicLayer::updateCosts(costmap_2d::Costmap2D& master_grid, int min_i, in
         max_j = std::min(max_j, 4000/2 + height/2);
     }
 
-	if(debug) {
-		ROS_INFO("-------------------------");
-		ROS_INFO("------------updateCosts--");
-		ROS_INFO("min_i:      %i", min_i);
-		ROS_INFO("min_j:      %i", min_j); 
-		ROS_INFO("max_i:      %i", max_i);
-		ROS_INFO("max_j:      %i", max_j);
-		ROS_INFO("-------------------------");
-		ROS_INFO("-------------------------");
-		ROS_INFO("-------------------------");
-		ROS_INFO("-------------------------");
-	}
+    if(debug) {
+        ROS_INFO("-------------------------");
+        ROS_INFO("------------updateCosts--");
+        ROS_INFO("min_i:      %i", min_i);
+        ROS_INFO("min_j:      %i", min_j); 
+        ROS_INFO("max_i:      %i", max_i);
+        ROS_INFO("max_j:      %i", max_j);
+        ROS_INFO("-------------------------");
+        ROS_INFO("-------------------------");
+        ROS_INFO("-------------------------");
+        ROS_INFO("-------------------------");
+    }
 
     costmap_2d::Costmap2D* layered_costmap = layered_costmap_->getCostmap();
     unsigned int size_x = layered_costmap->getSizeInCellsX(), size_y = layered_costmap->getSizeInCellsY();
@@ -517,42 +517,42 @@ void DynamicLayer::updateCosts(costmap_2d::Costmap2D& master_grid, int min_i, in
             if(flag_init) {
                 inputData_matrix(matrix_x,matrix_y) = (int)master_array[index];
                 
-				// sample the inputData matrix algorithm
-				if(i%mod_number == (mod_number-1) && j%mod_number == (mod_number-1)) {			// last element
-					transformMapToMatrix(i, j, mat_x_xxl, mat_y_xxl);
-					i_xxl = mat_x_xxl/mod_number; j_xxl = mat_y_xxl/mod_number;
-					
-					//~ if(debug)
-					//~ ROS_WARN_STREAM("(i_xxl, j_xxl) = (" << i_xxl << ", " << j_xxl << ")");
-					
-					// find the max of the lower resolution grid
-					obstacle_present = false;
-					unknown_present = false;
-					local_sum = 0;
-					for(int i_tmp=0; i_tmp<mod_number; i_tmp++) {
-						for(int j_tmp=0; j_tmp<mod_number; j_tmp++) {
-							// overrules everything
-							if(inputData_matrix(mat_x_xxl-i_tmp,mat_y_xxl-j_tmp) == LETHAL_OBSTACLE) {
-								obstacle_present = true;
-							}
-							// second priority
-							if(inputData_matrix(mat_x_xxl-i_tmp,mat_y_xxl-j_tmp) == NO_INFORMATION) {
-								unknown_present = true;
-							}
-							// else
-							local_sum += inputData_matrix(mat_x_xxl-i_tmp,mat_y_xxl-j_tmp);
-						}
-					}
-					
-					if(obstacle_present) {
-						inputData_xxl_matrix(i_xxl,j_xxl) = LETHAL_OBSTACLE;
-					} else if(unknown_present) {
-						inputData_xxl_matrix(i_xxl,j_xxl) = NO_INFORMATION;
-					} else {
-						inputData_xxl_matrix(i_xxl,j_xxl) = local_sum/mod_number*mod_number;
-					}
-				}            
-			}
+                // sample the inputData matrix algorithm
+                if(i%mod_number == (mod_number-1) && j%mod_number == (mod_number-1)) {            // last element
+                    transformMapToMatrix(i, j, mat_x_xxl, mat_y_xxl);
+                    i_xxl = mat_x_xxl/mod_number; j_xxl = mat_y_xxl/mod_number;
+                    
+                    //~ if(debug)
+                    //~ ROS_WARN_STREAM("(i_xxl, j_xxl) = (" << i_xxl << ", " << j_xxl << ")");
+                    
+                    // find the max of the lower resolution grid
+                    obstacle_present = false;
+                    unknown_present = false;
+                    local_sum = 0;
+                    for(int i_tmp=0; i_tmp<mod_number; i_tmp++) {
+                        for(int j_tmp=0; j_tmp<mod_number; j_tmp++) {
+                            // overrules everything
+                            if(inputData_matrix(mat_x_xxl-i_tmp,mat_y_xxl-j_tmp) == LETHAL_OBSTACLE) {
+                                obstacle_present = true;
+                            }
+                            // second priority
+                            if(inputData_matrix(mat_x_xxl-i_tmp,mat_y_xxl-j_tmp) == NO_INFORMATION) {
+                                unknown_present = true;
+                            }
+                            // else
+                            local_sum += inputData_matrix(mat_x_xxl-i_tmp,mat_y_xxl-j_tmp);
+                        }
+                    }
+                    
+                    if(obstacle_present) {
+                        inputData_xxl_matrix(i_xxl,j_xxl) = LETHAL_OBSTACLE;
+                    } else if(unknown_present) {
+                        inputData_xxl_matrix(i_xxl,j_xxl) = NO_INFORMATION;
+                    } else {
+                        inputData_xxl_matrix(i_xxl,j_xxl) = local_sum/mod_number*mod_number;
+                    }
+                }            
+            }
             
 
         }
@@ -562,15 +562,15 @@ void DynamicLayer::updateCosts(costmap_2d::Costmap2D& master_grid, int min_i, in
     if(flag_init) {
         // mark end points
         if(debug) {
-			transformMapToMatrix(max_i, min_j, matrix_x, matrix_y);
-			staticMap_matrix(matrix_x, matrix_y) = 150;
-			transformMapToMatrix(min_i, max_j, matrix_x, matrix_y);
-			staticMap_matrix(matrix_x, matrix_y) = 150;
-			transformMapToMatrix(max_i, max_j, matrix_x, matrix_y);
-			staticMap_matrix(matrix_x, matrix_y) = 150;
-			transformMapToMatrix(min_i, min_j, matrix_x, matrix_y);
-			staticMap_matrix(matrix_x, matrix_y) = 150;
-		}
+            transformMapToMatrix(max_i, min_j, matrix_x, matrix_y);
+            staticMap_matrix(matrix_x, matrix_y) = 150;
+            transformMapToMatrix(min_i, max_j, matrix_x, matrix_y);
+            staticMap_matrix(matrix_x, matrix_y) = 150;
+            transformMapToMatrix(max_i, max_j, matrix_x, matrix_y);
+            staticMap_matrix(matrix_x, matrix_y) = 150;
+            transformMapToMatrix(min_i, min_j, matrix_x, matrix_y);
+            staticMap_matrix(matrix_x, matrix_y) = 150;
+        }
 
         // update static and dynamic maps
         int min_x, min_y, max_x, max_y;
@@ -604,21 +604,21 @@ void DynamicLayer::updateCosts(costmap_2d::Costmap2D& master_grid, int min_i, in
                 int index = layered_costmap->getIndex(i, j);
                 transformMapToMatrix(i, j, matrix_x, matrix_y);
                 if((int)master_array[index] == NO_INFORMATION) {
-					staticMap_matrix(matrix_x, matrix_y) = 0.5;
+                    staticMap_matrix(matrix_x, matrix_y) = 0.5;
                     continue;
                 } else if((int)master_array[index] == FREE_SPACE) {
-					if(init_blank) {
-						staticMap_matrix(matrix_x, matrix_y) = 0.5;
-					} else {
-						staticMap_matrix(matrix_x, matrix_y) = 0;
-					}
+                    if(init_blank) {
+                        staticMap_matrix(matrix_x, matrix_y) = 0.5;
+                    } else {
+                        staticMap_matrix(matrix_x, matrix_y) = 0;
+                    }
                     continue;
                 } else if((int)master_array[index] == LETHAL_OBSTACLE) {
-					if(init_blank) {
-						staticMap_matrix(matrix_x, matrix_y) = 0.5;
-					} else {
-						staticMap_matrix(matrix_x, matrix_y) = 1.0;
-					}
+                    if(init_blank) {
+                        staticMap_matrix(matrix_x, matrix_y) = 0.5;
+                    } else {
+                        staticMap_matrix(matrix_x, matrix_y) = 1.0;
+                    }
                     continue;
                 } else {
                     ROS_WARN("Not a known value...");
