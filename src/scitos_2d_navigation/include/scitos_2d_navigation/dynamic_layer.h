@@ -92,6 +92,9 @@ private:
     float lower_bound;
     float upper_bound;
     
+    float map_min_value;
+    float map_max_value;
+    
     double stat_High;
     double stat_Low;
     double stat_Low2;

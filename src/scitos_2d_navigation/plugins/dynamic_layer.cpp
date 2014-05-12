@@ -104,6 +104,14 @@ void DynamicLayer::onInitialize()
     lower_bound = 0.1;                            // free space below 0.1 prob
     upper_bound = 0.9;                            // occupied space over 0.9 prob
     
+    // screws up algorithm if value goes to 0.0 or 1.0
+    double map_min_value_server, map_max_value_server; // only double on servers...
+    nh.param("map_min_value", map_min_value_server, 0.001);
+    nh.param("map_max_value", map_max_value_server, 0.999);
+    map_min_value = (float)map_min_value_server;
+    map_max_value = (float)map_max_value_server;
+    
+    
     double stat_low, stat_high, stat_low2, dyn_low, dyn_high;
     nh.param("stat_low", stat_low, 0.4);        // how fast shall it vanish?
     stat_Low = stat_low/(1-stat_low);
@@ -125,8 +133,7 @@ void DynamicLayer::onInitialize()
 // initialize static map
 void DynamicLayer::initStaticMap()
 {    
-    if(debug)
-    ROS_WARN("+++ Initializing static map");
+    if(debug) ROS_WARN("+++ Initializing static map");
     
     // handeling nav_msgs/MapMetaData
     staticMap.info.resolution = resolution;                         // float32
@@ -146,8 +153,7 @@ void DynamicLayer::initStaticMap()
 // initialize static map xxl
 void DynamicLayer::initStaticMapXxl()
 {
-    if(debug)
-    ROS_WARN("+++ Initializing static map xxl");
+    if(debug) ROS_WARN("+++ Initializing static map xxl");
     
     // handeling nav_msgs/MapMetaData
     staticMap_xxl.info.resolution = resolution_xxl;                     // float32
@@ -167,8 +173,7 @@ void DynamicLayer::initStaticMapXxl()
 // initialize dynamic map
 void DynamicLayer::initDynamicMap()
 {
-    if(debug)
-    ROS_WARN("+++ Initializing dynamic map");
+    if(debug) ROS_WARN("+++ Initializing dynamic map");
     
     // handeling nav_msgs/MapMetaData
     dynamicMap.info.resolution = resolution;                         // float32
@@ -188,8 +193,7 @@ void DynamicLayer::initDynamicMap()
 // initialize dynamic map xxl
 void DynamicLayer::initDynamicMapXxl()
 {
-    if(debug)
-    ROS_WARN("+++ Initializing dynamic map xxl");
+    if(debug) ROS_WARN("+++ Initializing dynamic map xxl");
     
     // handeling nav_msgs/MapMetaData
     dynamicMap_xxl.info.resolution = resolution_xxl;                     // float32
@@ -360,9 +364,6 @@ void DynamicLayer::updateMaps(Eigen::MatrixXf &meas_mat, const int min_x, const 
     float diff = 0;
     float model = 0;
     float old_map = 0;
-    // screws up algorithm if value goes to 0.0 or 1.0
-    float map_min_value = 0.001;
-    float map_max_value = 0.999;
     
     float stat_map_value;
     float stat_map_value_upd;
@@ -549,7 +550,7 @@ void DynamicLayer::updateCosts(costmap_2d::Costmap2D& master_grid, int min_i, in
                     } else if(unknown_present) {
                         inputData_xxl_matrix(i_xxl,j_xxl) = NO_INFORMATION;
                     } else {
-                        inputData_xxl_matrix(i_xxl,j_xxl) = local_sum/mod_number*mod_number;
+                        inputData_xxl_matrix(i_xxl,j_xxl) = local_sum/(mod_number*mod_number);
                     }
                 }            
             }
@@ -610,14 +611,15 @@ void DynamicLayer::updateCosts(costmap_2d::Costmap2D& master_grid, int min_i, in
                     if(init_blank) {
                         staticMap_matrix(matrix_x, matrix_y) = 0.5;
                     } else {
-                        staticMap_matrix(matrix_x, matrix_y) = 0;
+                        staticMap_matrix(matrix_x, matrix_y) = map_min_value;
+                        //~ ROS_ERROR("I got here (FREE)");
                     }
                     continue;
                 } else if((int)master_array[index] == LETHAL_OBSTACLE) {
                     if(init_blank) {
                         staticMap_matrix(matrix_x, matrix_y) = 0.5;
                     } else {
-                        staticMap_matrix(matrix_x, matrix_y) = 1.0;
+                        staticMap_matrix(matrix_x, matrix_y) = map_max_value;
                     }
                     continue;
                 } else {
