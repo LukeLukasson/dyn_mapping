@@ -86,7 +86,10 @@ private:
     // flags
     bool flag_init;
     bool debug;
-    bool init_blank;
+    bool init_fine_blank;
+    // debugging flags
+    bool publish_fine_map;
+    bool publish_block_map;
 
     // parameters algorithm
     float lower_bound;
@@ -100,9 +103,6 @@ private:
     double stat_Low2;
     double dyn_High;
     double dyn_Low;
-    
-    double conf_factor;      // never fully believe your past map
-
 };
 }
 #endif
